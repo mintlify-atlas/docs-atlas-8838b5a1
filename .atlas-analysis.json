@@ -1,0 +1,233 @@
+{
+  "projectType": "infrastructure",
+  "projectName": "AL-Go for GitHub",
+  "projectDescription": "A plug-and-play DevOps solution for Business Central AL development on GitHub",
+  "theme": "aspen",
+  "primaryColor": "#0078D4",
+  "lightColor": "#50E6FF",
+  "darkColor": "#005A9E",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "workshop"
+            ]
+          },
+          {
+            "group": "Setup & Configuration",
+            "pages": [
+              "setup/new-pte-project",
+              "setup/new-appsource-project",
+              "setup/existing-pte",
+              "setup/existing-appsource",
+              "setup/settings",
+              "setup/secrets"
+            ]
+          },
+          {
+            "group": "Core Workflows",
+            "pages": [
+              "workflows/ci-cd",
+              "workflows/pull-request-build",
+              "workflows/create-release",
+              "workflows/publish-to-environment",
+              "workflows/update-system-files"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/add-test-app",
+              "development/add-performance-test",
+              "development/dev-environments",
+              "development/dependencies",
+              "development/versioning"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/sandbox-environment",
+              "deployment/production-environment",
+              "deployment/continuous-deployment",
+              "deployment/delivery-targets"
+            ]
+          },
+          {
+            "group": "AppSource Publishing",
+            "pages": [
+              "appsource/overview",
+              "appsource/publish-workflow",
+              "appsource/codesigning"
+            ]
+          },
+          {
+            "group": "Advanced Topics",
+            "pages": [
+              "advanced/customization",
+              "advanced/self-hosted-runners",
+              "advanced/azure-keyvault",
+              "advanced/telemetry",
+              "advanced/power-platform"
+            ]
+          },
+          {
+            "group": "Migration",
+            "pages": [
+              "migration/from-azure-devops",
+              "migration/with-history"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Actions Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "actions/overview"
+            ]
+          },
+          {
+            "group": "Core Actions",
+            "pages": [
+              "actions/run-pipeline",
+              "actions/read-settings",
+              "actions/read-secrets",
+              "actions/check-for-updates"
+            ]
+          },
+          {
+            "group": "App Management",
+            "pages": [
+              "actions/add-existing-app",
+              "actions/create-app",
+              "actions/increment-version-number"
+            ]
+          },
+          {
+            "group": "Build & Test",
+            "pages": [
+              "actions/determine-artifacts",
+              "actions/calculate-artifact-names",
+              "actions/analyze-tests",
+              "actions/sign"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "actions/deploy",
+              "actions/deliver",
+              "actions/determine-deployment-environments",
+              "actions/determine-delivery-targets"
+            ]
+          },
+          {
+            "group": "Development Environment",
+            "pages": [
+              "actions/create-development-environment"
+            ]
+          },
+          {
+            "group": "Documentation",
+            "pages": [
+              "actions/build-reference-documentation"
+            ]
+          },
+          {
+            "group": "Power Platform",
+            "pages": [
+              "actions/build-power-platform",
+              "actions/deploy-power-platform",
+              "actions/pull-power-platform-changes"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Settings",
+        "groups": [
+          {
+            "group": "Configuration",
+            "pages": [
+              "settings/overview",
+              "settings/basic-project",
+              "settings/basic-repository",
+              "settings/advanced",
+              "settings/conditional"
+            ]
+          },
+          {
+            "group": "Secrets Management",
+            "pages": [
+              "settings/secrets-overview",
+              "settings/github-secrets",
+              "settings/azure-keyvault"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automated CI/CD pipelines for Business Central AL projects",
+    "Support for both PTE and AppSource app development",
+    "Continuous deployment to Business Central environments",
+    "AppSource publishing automation",
+    "Multi-project repository support",
+    "GitHub Actions-based workflows",
+    "Self-hosted runner support",
+    "Azure KeyVault integration",
+    "Power Platform integration",
+    "Comprehensive settings and secrets management",
+    "Built-in test automation (unit, performance, page scripting)",
+    "Reference documentation generation",
+    "Version management and release automation"
+  ],
+  "publicApiSurface": [
+    "RunPipeline",
+    "ReadSettings",
+    "ReadSecrets",
+    "CheckForUpdates",
+    "AddExistingApp",
+    "CreateApp",
+    "AnalyzeTests",
+    "BuildReferenceDocumentation",
+    "CalculateArtifactNames",
+    "CreateDevelopmentEnvironment",
+    "CreateReleaseNotes",
+    "Deliver",
+    "Deploy",
+    "DeployPowerPlatform",
+    "BuildPowerPlatform",
+    "PullPowerPlatformChanges",
+    "DetermineArtifactUrl",
+    "DetermineArtifactsForRelease",
+    "DetermineBuildProject",
+    "DetermineDeliveryTargets",
+    "DetermineDeploymentEnvironments",
+    "DetermineProjectsToBuild",
+    "DownloadProjectDependencies",
+    "GetArtifactsForDeployment",
+    "IncrementVersionNumber",
+    "PipelineCleanup",
+    "ProcessALCodeAnalysisLogs",
+    "PullRequestStatusCheck",
+    "ReadPowerPlatformSettings",
+    "RunPSScriptAnalyzer",
+    "Sign",
+    "Troubleshooting",
+    "ValidateWorkflowInput",
+    "VerifyPRChanges",
+    "WorkflowInitialize",
+    "WorkflowPostProcess"
+  ]
+}
