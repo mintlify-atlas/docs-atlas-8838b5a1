@@ -1,0 +1,187 @@
+---
+title: Pull Power Platform Changes
+description: Pull Power Platform solution changes from an environment to your repository
+---
+
+The Pull Power Platform Changes action exports a Power Platform solution from a target environment, unpacks it, and commits the changes back to your Git repository. This enables version control and collaboration for Power Platform solutions.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/PullPowerPlatformChanges@v5.0
+  with:
+    environmentName: 'Development'
+    solutionFolder: 'MySolution'
+    deploymentEnvironmentsJson: ${{ secrets.DEPLOYMENT_ENVIRONMENTS }}
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="actor" type="string" default="${{ github.actor }}">
+  The GitHub actor running the action
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action
+</ParamField>
+
+<ParamField path="environmentName" type="string" required>
+  Name of environment to pull changes from
+  
+  This should match a Power Platform environment configured in your deployment settings.
+</ParamField>
+
+<ParamField path="solutionFolder" type="string" default="">
+  Name of the solution to download and folder in which to download the solution
+  
+  This is both the Power Platform solution name and the target folder in your repository.
+</ParamField>
+
+<ParamField path="deploymentEnvironmentsJson" type="string" required>
+  The settings for all Deployment Environments in compressed JSON format
+  
+  Contains authentication credentials and environment URLs for Power Platform.
+</ParamField>
+
+<ParamField path="updateBranch" type="string" default="${{ github.ref_name }}">
+  Set the branch to update
+  
+  Changes will be committed to this branch.
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  Direct Commit?
+  
+  When `true`, changes are committed directly to the branch. When `false`, a pull request is created.
+</ParamField>
+
+## Example Workflows
+
+### Basic Pull Changes
+
+```yaml
+jobs:
+  pull-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Pull Power Platform Changes
+        uses: microsoft/AL-Go/Actions/PullPowerPlatformChanges@v5.0
+        with:
+          environmentName: 'Development'
+          solutionFolder: 'src/MySolution'
+          deploymentEnvironmentsJson: ${{ secrets.DEPLOYMENT_ENVIRONMENTS }}
+```
+
+### Pull Changes with Direct Commit
+
+```yaml
+- name: Pull Power Platform Changes
+  uses: microsoft/AL-Go/Actions/PullPowerPlatformChanges@v5.0
+  with:
+    environmentName: 'Development'
+    solutionFolder: 'MySolution'
+    deploymentEnvironmentsJson: ${{ secrets.DEPLOYMENT_ENVIRONMENTS }}
+    updateBranch: 'main'
+    directCommit: 'true'
+```
+
+### Scheduled Pull Changes
+
+```yaml
+name: Sync Power Platform Changes
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Pull Power Platform Changes
+        uses: microsoft/AL-Go/Actions/PullPowerPlatformChanges@v5.0
+        with:
+          environmentName: 'Development'
+          solutionFolder: 'PowerPlatformSolution'
+          deploymentEnvironmentsJson: ${{ secrets.DEPLOYMENT_ENVIRONMENTS }}
+          updateBranch: 'power-platform-sync'
+          directCommit: 'false'
+```
+
+### Pull Multiple Solutions
+
+```yaml
+strategy:
+  matrix:
+    solution:
+      - name: 'CoreSolution'
+        folder: 'src/CoreSolution'
+      - name: 'ExtensionSolution'
+        folder: 'src/ExtensionSolution'
+steps:
+  - name: Pull ${{ matrix.solution.name }}
+    uses: microsoft/AL-Go/Actions/PullPowerPlatformChanges@v5.0
+    with:
+      environmentName: 'Development'
+      solutionFolder: ${{ matrix.solution.name }}
+      deploymentEnvironmentsJson: ${{ secrets.DEPLOYMENT_ENVIRONMENTS }}
+```
+
+## Authentication
+
+The action supports two authentication methods:
+
+### Username/Password Authentication
+
+```json
+{
+  "Development": {
+    "ppUserName": "user@domain.com",
+    "ppPassword": "***",
+    "ppEnvironmentUrl": "https://org.crm.dynamics.com"
+  }
+}
+```
+
+### Application ID Authentication
+
+```json
+{
+  "Development": {
+    "ppTenantId": "tenant-guid",
+    "ppApplicationId": "app-guid",
+    "ppClientSecret": "***",
+    "ppEnvironmentUrl": "https://org.crm.dynamics.com"
+  }
+}
+```
+
+## Workflow
+
+The action performs the following steps:
+
+1. Clones the repository to a temporary location
+2. Exports the solution from Power Platform as a .zip file
+3. Unpacks the solution to the specified folder
+4. Removes the .zip file
+5. Commits the changes to the repository
+6. Creates a pull request (if `directCommit` is `false`) or pushes directly (if `true`)
+
+<Note>
+  This action is useful for keeping your repository in sync with changes made in Power Platform environments, enabling proper version control and team collaboration.
+</Note>
+
+<Warning>
+  Ensure your deployment environment credentials have the necessary permissions to export solutions from the target Power Platform environment.
+</Warning>

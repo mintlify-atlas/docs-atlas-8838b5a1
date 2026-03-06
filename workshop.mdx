@@ -1,0 +1,241 @@
+---
+title: AL-Go Workshop
+description: Complete hands-on workshop to master AL-Go for GitHub functionality
+---
+
+The AL-Go for GitHub Workshop is a comprehensive, hands-on learning experience that takes you through all the essential features and workflows of AL-Go for GitHub. Whether you're new to GitHub or an experienced developer, this workshop will help you master DevOps for Business Central development.
+
+## What You'll Learn
+
+This workshop covers everything from basic setup to advanced scenarios, including:
+
+- Creating and managing AL-Go repositories
+- Working with single-project and multi-project repositories
+- Implementing versioning and release strategies
+- Setting up continuous delivery and deployment
+- Adding automated testing
+- Managing dependencies between projects
+- Keeping your repository up-to-date
+
+## Access the Workshop
+
+The complete AL-Go workshop is available online:
+
+<Card title="AL-Go Workshop" icon="graduation-cap" href="https://aka.ms/algoworkshop">
+  Start the interactive workshop at aka.ms/algoworkshop
+</Card>
+
+## Prerequisites
+
+Before starting the workshop, you'll need:
+
+### Required Tools
+
+- **GitHub account** - Free tier is sufficient for the workshop
+- **GitHub organizational account** - Free tier works with public repositories
+- **VS Code** (optional for some sections) - With AL Language, Git, and PowerShell extensions
+- **Docker Desktop** (optional for local development sections)
+
+### GitHub Setup
+
+<Steps>
+  <Step title="Create organizational secret">
+    Create an organizational **secret** called `GHTOKENWORKFLOW` containing a personal access token:
+
+    **For classic tokens:**
+    - Grant **workflow** permissions (automatically includes repo permissions)
+
+    **For fine-grained tokens:**
+    - **Read and Write** access to Contents, Pull Requests, and Workflows
+    - **Read-only** access to Actions and Metadata
+
+    The secret should be available to all public repositories.
+
+    <Note>
+    Organizational settings must allow personal access tokens. See the [Update AL-Go System Files scenario](https://github.com/microsoft/AL-Go/blob/main/Scenarios/UpdateAlGoSystemFiles.md) for more details.
+    </Note>
+  </Step>
+
+  <Step title="Create organizational variable">
+    Create an organizational **variable** called `ALGOORGSETTINGS` with the following JSON:
+
+    ```json
+    {
+      "useCompilerFolder": true,
+      "doNotPublishApps": true,
+      "artifact": "//*//first"
+    }
+    ```
+
+    <Note>
+    The combination of `useCompilerFolder` and `doNotPublishApps` optimizes performance by avoiding container creation during builds. You'll modify these settings later when working with automated tests.
+    </Note>
+  </Step>
+</Steps>
+
+## Workshop Modules
+
+The workshop is organized into progressive modules, each building on the previous one:
+
+### Getting Started
+
+<CardGroup cols={2}>
+  <Card title="Introduction" icon="book-open">
+    Learn about GitHub, AL-Go for GitHub, and the differences between personal and organizational accounts
+  </Card>
+  <Card title="Prerequisites" icon="list-check">
+    Set up all required tools, accounts, and configurations
+  </Card>
+  <Card title="Get Started" icon="rocket">
+    Create your first AL-Go for GitHub repository
+  </Card>
+  <Card title="Add an App" icon="plus">
+    Add your first Business Central app to the repository
+  </Card>
+</CardGroup>
+
+### Core Concepts
+
+<CardGroup cols={2}>
+  <Card title="Versioning" icon="code-branch">
+    Understand how AL-Go handles versioning of apps and artifacts
+  </Card>
+  <Card title="Releasing" icon="tag">
+    Learn to create releases and issue hotfixes
+  </Card>
+  <Card title="Single vs Multi-Project" icon="folder-tree">
+    Explore the differences between repository structures
+  </Card>
+  <Card title="Dependencies" icon="link">
+    Manage dependencies within and across repositories
+  </Card>
+</CardGroup>
+
+### Advanced Topics
+
+<CardGroup cols={2}>
+  <Card title="Continuous Delivery" icon="truck">
+    Configure delivery of your apps to various targets
+  </Card>
+  <Card title="Continuous Deployment" icon="rocket">
+    Set up automatic deployment to Business Central environments
+  </Card>
+  <Card title="Production Publishing" icon="shield-check">
+    Securely publish apps to production environments
+  </Card>
+  <Card title="Automated Tests" icon="flask">
+    Add and run automated tests in your projects
+  </Card>
+</CardGroup>
+
+### Testing & Documentation
+
+<CardGroup cols={2}>
+  <Card title="Scheduled Test Runs" icon="clock">
+    Test against latest and future Business Central versions
+  </Card>
+  <Card title="Performance Testing" icon="gauge">
+    Add performance tests to your workflows (coming soon)
+  </Card>
+  <Card title="Reference Documentation" icon="file-lines">
+    Generate and maintain up-to-date reference docs
+  </Card>
+  <Card title="Development Environments" icon="desktop">
+    Set up development environments for your projects (coming soon)
+  </Card>
+</CardGroup>
+
+### Professional Workflows
+
+<CardGroup cols={2}>
+  <Card title="Development Process" icon="code-pull-request">
+    Work with feature branches, pull requests, and code reviews (coming soon)
+  </Card>
+  <Card title="Keep Up-to-Date" icon="arrows-rotate">
+    Update AL-Go to the latest version via workflows (coming soon)
+  </Card>
+</CardGroup>
+
+## Expert Level Topics
+
+For advanced users who want to customize AL-Go:
+
+<Note>
+These topics are planned for future workshop releases.
+</Note>
+
+- **Custom Delivery** - Deliver to custom targets like Teams channels
+- **Custom Deployment** - Deploy to on-premises environments
+- **Custom Jobs** - Add custom jobs to AL-Go workflows
+- **Custom Templates** - Ensure consistency across multiple repositories
+
+## Workshop Format
+
+Each module in the workshop includes:
+
+- **Clear learning objectives** - Know what you'll accomplish
+- **Step-by-step instructions** - Follow along with detailed guidance
+- **Screenshots and examples** - Visual aids for every step
+- **Hands-on exercises** - Practice with real repositories
+- **Best practices** - Learn recommended approaches
+
+## Additional Topics
+
+The workshop continues to expand with new content on:
+
+- Dependencies to other apps
+- AppSource validation
+- Publishing to AppSource
+- Advanced settings configuration
+- Versioning strategies
+- Power Platform integration
+- Self-hosted runners
+- Repository customization
+
+## Why Take This Workshop?
+
+<CardGroup cols={2}>
+  <Card title="No DevOps Experience Needed" icon="user-graduate">
+    Start with zero DevOps knowledge - no prior experience with Docker, PowerShell, or YAML required
+  </Card>
+  <Card title="Hands-On Learning" icon="hand">
+    Build real repositories and workflows as you learn
+  </Card>
+  <Card title="Free and Open Source" icon="code">
+    All tools and templates are free to use (GitHub costs may apply)
+  </Card>
+  <Card title="Professional DevOps" icon="briefcase">
+    Get enterprise-grade DevOps processes without hiring a DevOps engineer
+  </Card>
+</CardGroup>
+
+## What is AL-Go for GitHub?
+
+AL-Go for GitHub is the plug-and-play DevOps solution for Business Central development on GitHub:
+
+- **Open source and free** - No licensing costs
+- **Supports PTEs and AppSource apps** - Works for all project types
+- **Easy to use** - No specialized DevOps knowledge required
+- **Easy to maintain** - Stay current with workflow updates
+- **DevOps as a tool** - Not an investment area
+
+## Getting Help
+
+If you need assistance during the workshop:
+
+- Check the [AL-Go repository](https://github.com/microsoft/AL-Go) for documentation
+- Review the [usage scenarios](https://github.com/microsoft/AL-Go#usage-scenarios)
+- Read the [AL-Go blog posts](https://freddysblog.com/2022/04/26/al-go-for-github/)
+- Check the [roadmap](https://aka.ms/ALGoRoadmap) for upcoming features
+
+## Start Learning
+
+Ready to become an AL-Go expert? Start the workshop now:
+
+<Card title="Launch the AL-Go Workshop" icon="rocket" href="https://aka.ms/algoworkshop">
+  Begin your journey at aka.ms/algoworkshop
+</Card>
+
+<Note>
+The workshop uses public repositories and free GitHub accounts, making it accessible to everyone. For private repositories in a production environment, you'll need a paid GitHub organizational account (Teams tier is recommended).
+</Note>

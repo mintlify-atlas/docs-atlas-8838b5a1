@@ -1,0 +1,84 @@
+---
+title: Deploy
+description: Deploy AL-Go applications to Business Central environments
+---
+
+The Deploy action deploys built artifacts to a specified Business Central environment. It supports both continuous deployment (CD) and publish scenarios.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/Deploy@v5.0
+  with:
+    environmentName: 'Production'
+    artifactsFolder: '.artifacts'
+    type: 'CD'
+    deploymentEnvironmentsJson: ${{ needs.determine.outputs.DeploymentEnvironmentsJson }}
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action
+</ParamField>
+
+<ParamField path="environmentName" type="string" required>
+  Name of environment to deploy to
+</ParamField>
+
+<ParamField path="artifactsFolder" type="string" required>
+  Path to the downloaded artifacts to deploy
+</ParamField>
+
+<ParamField path="type" type="string" default="CD">
+  Type of deployment (CD or Publish)
+</ParamField>
+
+<ParamField path="deploymentEnvironmentsJson" type="string" required>
+  The settings for all Deployment Environments in compressed JSON format
+</ParamField>
+
+<ParamField path="artifactsVersion" type="string" default="">
+  Artifacts version. Used to check if this is a deployment from a PR
+</ParamField>
+
+## Outputs
+
+<ParamField path="environmentUrl" type="string">
+  The URL of the deployed environment
+</ParamField>
+
+## Example Workflow
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .artifacts
+      
+      - name: Deploy to environment
+        uses: microsoft/AL-Go/Actions/Deploy@v5.0
+        with:
+          environmentName: 'Production'
+          artifactsFolder: '.artifacts'
+          deploymentEnvironmentsJson: ${{ needs.determine.outputs.DeploymentEnvironmentsJson }}
+```
+
+<Note>
+  The `deploymentEnvironmentsJson` input is typically obtained from the [DetermineDeploymentEnvironments](/actions/determine-deployment-environments) action.
+</Note>
+
+<Warning>
+  Ensure that the artifacts folder contains valid Business Central app files (.app) before running the deployment.
+</Warning>

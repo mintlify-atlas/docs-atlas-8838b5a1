@@ -1,0 +1,77 @@
+---
+title: Add Existing App
+description: Add an existing app or test app from a URL to your AL-Go repository
+---
+
+The **Add Existing App** action downloads and adds an existing Business Central app (.app file) or a .zip file containing apps to your AL-Go repository.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/AddExistingApp@main
+  with:
+    url: 'https://example.com/path/to/app.app'
+```
+
+## Inputs
+
+<ParamField path="url" type="string" required>
+  Direct download URL of the .app or .zip file to add to the repository.
+</ParamField>
+
+<ParamField path="project" type="string" default=".">
+  Project name if the repository is setup for multiple projects. Use `.` for the root project.
+</ParamField>
+
+<ParamField path="updateBranch" type="string" default="${{ github.ref_name }}">
+  Set the branch to update. Defaults to the current branch.
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  Whether to commit directly to the branch without creating a pull request.
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action. Options: `powershell` or `pwsh`.
+</ParamField>
+
+<ParamField path="actor" type="string" default="${{ github.actor }}">
+  The GitHub actor running the action.
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action.
+</ParamField>
+
+## Example
+
+Add an existing app from a direct download URL:
+
+```yaml
+name: Add Existing App
+on:
+  workflow_dispatch:
+    inputs:
+      appUrl:
+        description: 'URL to the .app file'
+        required: true
+
+jobs:
+  add-app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: microsoft/AL-Go/Actions/AddExistingApp@main
+        with:
+          url: ${{ github.event.inputs.appUrl }}
+          directCommit: false
+```
+
+<Note>
+  The action will download the app from the specified URL and add it to the appropriate location in your repository structure.
+</Note>
+
+<Warning>
+  Ensure the URL is accessible and points to a valid .app or .zip file. The action requires a direct download link.
+</Warning>

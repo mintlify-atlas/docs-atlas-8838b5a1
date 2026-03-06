@@ -1,0 +1,157 @@
+---
+title: Create New PTE Project
+description: Set up a new per-tenant extension project with AL-Go for GitHub from scratch
+---
+
+This guide walks you through creating a new per-tenant extension (PTE) project using AL-Go for GitHub, similar to the AL:Go experience in VS Code.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- A GitHub account
+- VS Code with the following extensions installed:
+  - AL Language
+  - Git
+  - PowerShell
+- Docker installed locally
+
+## Create Your Repository
+
+<Steps>
+  <Step title="Use the AL-Go PTE template">
+    Navigate to [https://github.com/microsoft/AL-Go-PTE](https://github.com/microsoft/AL-Go-PTE) and choose **Use this template**, then select **Create a new repository**.
+
+    <Note>
+      You can choose to make your repository either Public or Private based on your needs.
+    </Note>
+  </Step>
+
+  <Step title="Configure repository settings">
+    Enter a repository name (e.g., `app1`), select your visibility preference (Public or Private), and click **Create Repository**.
+  </Step>
+</Steps>
+
+## Create Your First App
+
+<Steps>
+  <Step title="Run the Create a new app workflow">
+    In your new repository:
+    1. Select **Actions** → **Show more workflows...**
+    2. Choose **Create a new app** → **Run workflow**
+  </Step>
+
+  <Step title="Configure app settings">
+    Enter the following information:
+    - **Name**: Your app name
+    - **Publisher**: Your publisher name
+    - **ID range**: The object ID range for your app
+    
+    Select **Direct Commit** and click **Run workflow**.
+  </Step>
+
+  <Step title="Wait for workflow completion">
+    Monitor the workflow progress. When complete, navigate to **< > Code** in the top bar to verify your repository now contains your app folder.
+  </Step>
+</Steps>
+
+## Set Up Local Development
+
+<Steps>
+  <Step title="Clone the repository">
+    1. Click the **Code** button and copy the HTTPS clone URL
+    2. In VS Code, press **Ctrl+Shift+P** and select **Git Clone**
+    3. Paste the clone URL and select a folder for your repository
+  </Step>
+
+  <Step title="Open the workspace">
+    Open the cloned repository and the workspace file when VS Code prompts you.
+
+    <Note>
+      You can rename the `al.code-workspace` file to something more descriptive to better distinguish between multiple workspaces.
+    </Note>
+  </Step>
+
+  <Step title="Run the local development environment script">
+    1. In the `.AL-Go` folder, locate the `localDevEnv.ps1` script
+    2. Run the PowerShell script
+    3. Answer the questions about:
+       - Container name
+       - Authentication mechanism
+       - Credentials
+       - License file (select none for development)
+
+    <Warning>
+      The script may request permissions to run Docker commands. Accept these permissions when prompted.
+    </Warning>
+  </Step>
+
+  <Step title="Configure VS Code">
+    After the script completes:
+    1. Press **Ctrl+Shift+P** in VS Code
+    2. Select **AL: Clear Credentials Cache**
+  </Step>
+</Steps>
+
+## Test Your Development Environment
+
+<Steps>
+  <Step title="Modify and deploy your app">
+    1. Open the `HelloWorld.al` file
+    2. Modify the string content
+    3. Press **F5** to deploy
+
+    VS Code may prompt for the credentials you provided earlier, depending on your authentication method.
+  </Step>
+
+  <Step title="Verify in Business Central">
+    1. Log in to Business Central
+    2. Navigate to the Customers page
+    3. Your customized Hello World message should appear
+  </Step>
+</Steps>
+
+## Commit Your Changes
+
+<Steps>
+  <Step title="Stage and commit">
+    In VS Code, you'll notice that both your `HelloWorld.al` changes and the `launch.json` file have been modified with local environment information.
+
+    1. Stage your changes
+    2. Commit with a meaningful message
+    3. Sync to push to GitHub
+  </Step>
+
+  <Step title="Monitor the CI/CD workflow">
+    1. Navigate to your repository on GitHub
+    2. Click **Actions** to view your workflows
+    3. When the build completes, inspect the build summary and workflow details
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configure Settings" icon="gear" href="/setup/settings">
+    Customize your AL-Go project settings for your specific needs
+  </Card>
+  <Card title="Manage Secrets" icon="key" href="/setup/secrets">
+    Set up authentication and secrets for deployment
+  </Card>
+  <Card title="Register Environments" icon="cloud" href="/workflows/environments">
+    Configure sandbox and production environments for deployment
+  </Card>
+  <Card title="Create Releases" icon="rocket" href="/workflows/create-release">
+    Learn how to create and publish releases
+  </Card>
+</CardGroup>
+
+## Workflow Insights
+
+<Note>
+  To inspect detailed workflow execution:
+  1. Click on a completed build
+  2. Select the **build** job
+  3. Expand the **Run Pipeline** section
+  4. View the **Compiling apps** subsection for detailed compilation logs
+</Note>

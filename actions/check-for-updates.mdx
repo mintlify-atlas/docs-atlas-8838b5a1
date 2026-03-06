@@ -1,0 +1,351 @@
+---
+title: Check For Updates
+description: Check for and apply updates to AL-Go system files
+---
+
+# Check For Updates
+
+The Check For Updates action monitors and applies updates to AL-Go system files in your repository. It ensures your AL-Go installation stays current with the latest features, bug fixes, and improvements from the template repository.
+
+## Overview
+
+This action helps maintain your AL-Go installation by:
+
+- Checking for updates from the AL-Go template repository
+- Comparing your current version against the latest available
+- Optionally downloading and applying updates automatically
+- Creating pull requests or direct commits with updates
+- Tracking update history to avoid redundant downloads
+
+<Note>
+By default, this action only checks for updates without applying them. Set `update: 'Y'` to actually apply updates to your repository.
+</Note>
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  The shell in which to run the PowerShell script:
+  - `powershell` - Windows PowerShell 5.1
+  - `pwsh` - PowerShell 7+
+</ParamField>
+
+<ParamField path="actor" type="string" default="${{ github.actor }}">
+  The GitHub username of the actor running the action. This is used for attribution in commits and pull requests created by the update process.
+</ParamField>
+
+<ParamField path="token" type="string" default="">
+  Base64 encoded GhTokenWorkflow secret. This token is used for authenticating when creating pull requests or pushing commits. If not provided, the default `GITHUB_TOKEN` is used.
+</ParamField>
+
+<ParamField path="templateUrl" type="string" default="">
+  URL of the AL-Go template repository to check for updates. If not specified, the action uses the template repository that was originally used to create your repository. This is stored in your AL-Go settings.
+  
+  Example: `https://github.com/microsoft/AL-Go-PTE@main`
+</ParamField>
+
+<ParamField path="downloadLatest" type="boolean" required>
+  Controls whether to download the latest version of the template:
+  - `true`: Always download the latest version from the template repository
+  - `false`: Reuse the SHA from the last update, only downloading if there are changes
+  
+  Set to `true` for scheduled update checks, `false` for incremental updates.
+</ParamField>
+
+<ParamField path="update" type="string" default="N">
+  Determines whether to actually apply updates:
+  - `N`: Only check for updates (default)
+  - `Y`: Download and apply updates to the repository
+  
+  When set to `Y`, the action will create commits with the updated files.
+</ParamField>
+
+<ParamField path="updateBranch" type="string" default="${{ github.ref_name }}">
+  The branch to update with AL-Go system files. This parameter behavior depends on the `directCommit` setting:
+  - If `directCommit` is `false`: Updates are committed to this branch via pull request
+  - If `directCommit` is `true`: This parameter is ignored and the current branch is updated
+  
+  Example: `main`, `develop`, `al-go-updates`
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  Controls how updates are applied:
+  - `false`: Create a pull request with updates (default, safer)
+  - `true`: Commit updates directly to the branch the action is running on
+  
+  Direct commits are faster but bypass pull request reviews. Use with caution on protected branches.
+</ParamField>
+
+## Outputs
+
+This action does not produce any outputs. It performs its work by either:
+- Creating commits directly to the branch, or
+- Creating a pull request with proposed updates
+
+Check the action logs and your repository's pull requests or commit history to see results.
+
+## Usage Examples
+
+### Check for Updates Only
+
+```yaml
+name: Check for AL-Go Updates
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check for updates
+        uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+        with:
+          shell: pwsh
+          downloadLatest: true
+          update: 'N'
+```
+
+### Auto-Update via Pull Request
+
+```yaml
+name: Update AL-Go System Files
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+  workflow_dispatch:
+    inputs:
+      templateUrl:
+        description: 'Template URL (leave empty for default)'
+        required: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check for updates
+        uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+        with:
+          shell: pwsh
+          downloadLatest: true
+          update: 'Y'
+          updateBranch: 'al-go-updates'
+          directCommit: false
+          templateUrl: ${{ github.event.inputs.templateUrl }}
+```
+
+### Direct Commit Updates
+
+```yaml
+name: Update AL-Go (Direct)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GhTokenWorkflow }}
+      
+      - name: Apply updates
+        uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+        with:
+          shell: pwsh
+          token: ${{ secrets.GhTokenWorkflow }}
+          downloadLatest: true
+          update: 'Y'
+          directCommit: true
+```
+
+### Using Custom Template
+
+```yaml
+- name: Check for updates from custom template
+  uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+  with:
+    shell: pwsh
+    templateUrl: 'https://github.com/myorg/my-al-go-template@main'
+    downloadLatest: true
+    update: 'Y'
+```
+
+## Update Workflow
+
+The Check For Updates action follows this workflow:
+
+1. **Determine Template**: Identifies the template repository (from parameter or settings)
+2. **Check Current Version**: Reads the last update SHA from repository settings
+3. **Download Template**: Downloads the template repository (latest or from last SHA)
+4. **Compare Files**: Compares AL-Go system files between template and your repository
+5. **Apply Updates** (if `update: 'Y'`):
+   - Updates AL-Go system files with template versions
+   - Creates commit with changes
+   - Either pushes directly or creates pull request
+
+## AL-Go System Files
+
+The action updates AL-Go system files, which typically include:
+
+- Workflow files in `.github/workflows/`
+- Action files in `.github/actions/` or `Actions/`
+- Core PowerShell scripts
+- Template settings and configurations
+
+<Warning>
+**Important:** The action only updates AL-Go system files, not your custom code or project-specific settings. However, always review updates before merging, especially if you've customized AL-Go workflows.
+</Warning>
+
+## Update Strategies
+
+### Scheduled Updates with Review
+
+Recommended approach for production repositories:
+
+```yaml
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly
+
+jobs:
+  update:
+    steps:
+      - uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+        with:
+          downloadLatest: true
+          update: 'Y'
+          directCommit: false  # Creates PR for review
+```
+
+### Manual Updates on Demand
+
+For controlled update timing:
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      applyUpdates:
+        description: 'Apply updates (Y/N)'
+        required: true
+        default: 'N'
+
+jobs:
+  update:
+    steps:
+      - uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+        with:
+          downloadLatest: true
+          update: ${{ github.event.inputs.applyUpdates }}
+```
+
+### Automated Direct Updates
+
+For non-critical repositories or dedicated update branches:
+
+```yaml
+- uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+  with:
+    downloadLatest: true
+    update: 'Y'
+    directCommit: true
+```
+
+## Best Practices
+
+### Use Pull Requests for Protected Branches
+
+```yaml
+- uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+  with:
+    update: 'Y'
+    updateBranch: 'al-go-updates'
+    directCommit: false
+```
+
+This creates a PR that can be reviewed and tested before merging to main.
+
+### Provide Custom Token for PRs
+
+The default `GITHUB_TOKEN` may not trigger subsequent workflows. Use a custom token:
+
+```yaml
+- uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+  with:
+    token: ${{ secrets.GhTokenWorkflow }}
+    update: 'Y'
+```
+
+### Test Updates in Development First
+
+Run updates on a development branch before applying to main:
+
+```yaml
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  update:
+    steps:
+      - uses: microsoft/AL-Go/Actions/CheckForUpdates@main
+        with:
+          update: 'Y'
+          updateBranch: 'develop'
+```
+
+## Troubleshooting
+
+### No Updates Applied
+
+If updates aren't being applied:
+- Verify `update` is set to `'Y'` (as a string, not boolean)
+- Check that there are actually updates available
+- Ensure the token has write permissions
+- Review action logs for error messages
+
+### Template Not Found
+
+If the template repository cannot be accessed:
+- Verify the `templateUrl` is correct and accessible
+- Check that you have read access to the template repository
+- For private templates, ensure the token has appropriate permissions
+
+### Pull Request Not Created
+
+If no PR is created when expected:
+- Ensure `directCommit` is `false`
+- Verify the `updateBranch` doesn't already have the updates
+- Check that the token has permission to create PRs
+- Review if there are any actual changes to commit
+
+### Direct Commit Fails
+
+If direct commits fail:
+- Check branch protection rules
+- Verify the token has push permissions
+- Ensure the branch exists and is accessible
+- Check for conflicts with existing changes
+
+## Template Repository
+
+AL-Go provides several template repositories:
+
+- **AL-Go-PTE**: For Per-Tenant Extensions
+- **AL-Go-AppSource**: For AppSource applications
+
+Your repository was created from one of these templates, and by default, updates come from the same template. You can override this with the `templateUrl` parameter.
+
+## Related Documentation
+
+- [AL-Go Workflows](/workflows/overview) - Understanding AL-Go workflow structure
+- [Settings](/settings/overview) - Configuring AL-Go settings
+- [GitHub Actions Documentation](https://docs.github.com/en/actions) - General GitHub Actions information

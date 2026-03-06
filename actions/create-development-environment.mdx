@@ -1,0 +1,112 @@
+---
+title: Create Development Environment
+description: Create or reuse a Business Central online development environment
+---
+
+The Create Development Environment action creates a new Business Central online development environment or reuses an existing one. It can automatically update your repository configuration with the environment details.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/CreateDevelopmentEnvironment@v5.0
+  with:
+    environmentName: 'MyDevEnv'
+    adminCenterApiCredentials: ${{ secrets.ADMIN_CENTER_API_CREDENTIALS }}
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="actor" type="string" default="${{ github.actor }}">
+  The GitHub actor running the action
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action
+</ParamField>
+
+<ParamField path="environmentName" type="string" required>
+  Name of the online environment to create
+</ParamField>
+
+<ParamField path="project" type="string" default=".">
+  Project name if the repository is setup for multiple projects
+  
+  Use `.` for the root project or specify a project folder name.
+</ParamField>
+
+<ParamField path="adminCenterApiCredentials" type="string" default="">
+  Admin center API credentials for authenticating with the Business Central Admin Center
+  
+  Should be stored as a secret in your repository.
+</ParamField>
+
+<ParamField path="reUseExistingEnvironment" type="boolean" default="false">
+  Reuse environment if it exists?
+  
+  When `true`, the action will use an existing environment with the same name instead of creating a new one.
+</ParamField>
+
+<ParamField path="updateBranch" type="string" default="${{ github.ref_name }}">
+  Set the branch to update with environment configuration
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  Direct Commit?
+  
+  When `true`, changes are committed directly to the branch. When `false`, a pull request is created.
+</ParamField>
+
+## Example Workflows
+
+### Create New Environment
+
+```yaml
+jobs:
+  create-env:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Development Environment
+        uses: microsoft/AL-Go/Actions/CreateDevelopmentEnvironment@v5.0
+        with:
+          environmentName: 'Dev-${{ github.actor }}'
+          adminCenterApiCredentials: ${{ secrets.ADMIN_CENTER_API_CREDENTIALS }}
+          reUseExistingEnvironment: 'false'
+```
+
+### Reuse Existing Environment
+
+```yaml
+- name: Create or Reuse Development Environment
+  uses: microsoft/AL-Go/Actions/CreateDevelopmentEnvironment@v5.0
+  with:
+    environmentName: 'SharedDevEnv'
+    adminCenterApiCredentials: ${{ secrets.ADMIN_CENTER_API_CREDENTIALS }}
+    reUseExistingEnvironment: 'true'
+    updateBranch: 'main'
+    directCommit: 'true'
+```
+
+### Multi-Project Setup
+
+```yaml
+- name: Create Environment for Specific Project
+  uses: microsoft/AL-Go/Actions/CreateDevelopmentEnvironment@v5.0
+  with:
+    environmentName: 'Project1-Dev'
+    project: 'Project1'
+    adminCenterApiCredentials: ${{ secrets.ADMIN_CENTER_API_CREDENTIALS }}
+```
+
+<Note>
+  The environment configuration will be committed to the repository, making it available for other developers and workflows.
+</Note>
+
+<Warning>
+  Admin Center API credentials provide access to create and manage Business Central environments. Store them securely as GitHub secrets.
+</Warning>

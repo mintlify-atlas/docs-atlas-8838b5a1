@@ -1,0 +1,138 @@
+---
+title: Settings Overview
+description: Learn how AL-Go for GitHub uses settings to control repository and project behavior
+---
+
+The behavior of AL-Go for GitHub is controlled by settings and secrets. This section covers all aspects of settings configuration.
+
+## What are Settings?
+
+Settings in AL-Go for GitHub are configuration values that control how your workflows behave. They determine everything from which Business Central version to build against, to how apps are versioned, tested, and deployed.
+
+Settings are stored in JSON files and can be applied at different levels:
+
+- **Organization level** - via GitHub variables
+- **Repository level** - in `.github/AL-Go-settings.json`
+- **Project level** - in `.AL-Go/settings.json`
+- **Workflow level** - in workflow-specific settings files
+- **User level** - in user-specific settings files
+
+## Settings Categories
+
+Settings are organized into several categories:
+
+<CardGroup cols={2}>
+  <Card title="Basic Project Settings" icon="cube" href="/settings/basic-project">
+    Core settings for AL-Go projects including country, version, and folder structure
+  </Card>
+  <Card title="Basic Repository Settings" icon="folder-tree" href="/settings/basic-repository">
+    Repository-level settings like project type, runners, and environments
+  </Card>
+  <Card title="Advanced Settings" icon="sliders" href="/settings/advanced">
+    Expert-level settings for artifacts, versioning, dependencies, and code analysis
+  </Card>
+  <Card title="Conditional Settings" icon="code-branch" href="/settings/conditional">
+    Apply different settings based on branches, workflows, or build modes
+  </Card>
+</CardGroup>
+
+## Settings Hierarchy
+
+When running a workflow or local script, settings are applied by reading from multiple locations. The order matters - **last applied settings win**:
+
+<Steps>
+  <Step title="Organization Settings">
+    `ALGoOrgSettings` GitHub variable - applies to all repositories in the organization
+  </Step>
+  <Step title="Template Repository Settings">
+    `.github/AL-Go-TemplateRepoSettings.doNotEdit.json` - from custom template repository
+  </Step>
+  <Step title="Repository Settings">
+    `.github/AL-Go-settings.json` - repository-level settings for all projects
+  </Step>
+  <Step title="Repository Variable">
+    `ALGoRepoSettings` GitHub variable - repository-level settings via variables
+  </Step>
+  <Step title="Template Project Settings">
+    `.github/AL-Go-TemplateProjectSettings.doNotEdit.json` - from custom template
+  </Step>
+  <Step title="Project Settings">
+    `.AL-Go/settings.json` - project-specific settings
+  </Step>
+  <Step title="Workflow Settings (Repository)">
+    `.github/<workflow>.settings.json` - workflow-specific for all projects
+  </Step>
+  <Step title="Workflow Settings (Project)">
+    `.AL-Go/<workflow>.settings.json` - workflow-specific for one project
+  </Step>
+  <Step title="User Settings">
+    `.AL-Go/<username>.settings.json` - user-specific settings (rarely used)
+  </Step>
+</Steps>
+
+<Note>
+Settings from later sources override settings from earlier sources. However, complex types like arrays and objects are **merged** by default. You can change this behavior using the `overwriteSettings` property.
+</Note>
+
+## Multi-Project vs Single-Project
+
+An AL-Go repository can be structured in two ways:
+
+### Single Project
+
+- One project with multiple apps
+- `.AL-Go` folder in the repository root
+- All apps built, published, and tested together
+
+### Multiple Projects
+
+- Multiple projects, each with multiple apps
+- Each project in its own folder with a `.AL-Go` subfolder
+- Projects are built, deployed, and tested separately
+- Comparable to having multiple repositories
+
+<Tip>
+Use the `projects` setting in `.github/AL-Go-settings.json` to explicitly specify which folders contain projects. Otherwise, AL-Go automatically discovers projects by looking for folders containing `.AL-Go/settings.json` files.
+</Tip>
+
+## BcContainerHelper Settings
+
+The repository settings file (`.github/AL-Go-settings.json`) can also contain BcContainerHelper settings. These settings control low-level container behavior:
+
+<ParamField path="baseUrl" type="string" default="https://businesscentral.dynamics.com">
+  Base URL for the online Business Central Web Client (change for embed apps)
+</ParamField>
+
+<ParamField path="apiBaseUrl" type="string" default="https://api.businesscentral.dynamics.com">
+  Base URL for the online Business Central API endpoint (change for embed apps)
+</ParamField>
+
+<ParamField path="PartnerTelemetryConnectionString" type="string">
+  Telemetry connection string for partner DevOps telemetry
+</ParamField>
+
+<ParamField path="SendExtendedTelemetryToMicrosoft" type="boolean" default={false}>
+  Set to true to emit extended DevOps telemetry to Microsoft
+</ParamField>
+
+<ParamField path="ObjectIdForInternalUse" type="number" default={88123}>
+  Object ID for BcContainerHelper internal use (change if default is in use)
+</ParamField>
+
+<ParamField path="TreatWarningsAsErrors" type="array">
+  List of AL warning codes to treat as errors
+</ParamField>
+
+<ParamField path="DefaultNewContainerParameters" type="object">
+  Parameters added to all container creations in this repository
+</ParamField>
+
+## Next Steps
+
+Explore the different categories of settings:
+
+- [Basic Project Settings](/settings/basic-project) - Start here for project configuration
+- [Basic Repository Settings](/settings/basic-repository) - Configure repository-wide behavior
+- [Advanced Settings](/settings/advanced) - Fine-tune build and deployment
+- [Conditional Settings](/settings/conditional) - Apply settings conditionally
+- [Secrets Overview](/settings/secrets-overview) - Learn about secrets in AL-Go

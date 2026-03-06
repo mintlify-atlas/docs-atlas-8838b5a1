@@ -1,122 +1,192 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "AL-Go for GitHub",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0078D4",
+    "light": "#50E6FF",
+    "dark": "#005A9E"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Microsoft/al-go"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Microsoft/al-go"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "workshop"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Setup & Configuration",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "setup/new-pte-project",
+              "setup/new-appsource-project",
+              "setup/existing-pte",
+              "setup/existing-appsource",
+              "setup/settings",
+              "setup/secrets"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Core Workflows",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "workflows/ci-cd",
+              "workflows/pull-request-build",
+              "workflows/create-release",
+              "workflows/publish-to-environment",
+              "workflows/update-system-files"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Development",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "development/add-test-app",
+              "development/add-performance-test",
+              "development/dev-environments",
+              "development/dependencies",
+              "development/versioning"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/sandbox-environment",
+              "deployment/production-environment",
+              "deployment/continuous-deployment",
+              "deployment/delivery-targets"
+            ]
+          },
+          {
+            "group": "AppSource Publishing",
+            "pages": [
+              "appsource/overview",
+              "appsource/publish-workflow",
+              "appsource/codesigning"
+            ]
+          },
+          {
+            "group": "Advanced Topics",
+            "pages": [
+              "advanced/customization",
+              "advanced/self-hosted-runners",
+              "advanced/azure-keyvault",
+              "advanced/telemetry",
+              "advanced/power-platform"
+            ]
+          },
+          {
+            "group": "Migration",
+            "pages": [
+              "migration/from-azure-devops",
+              "migration/with-history"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Actions Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "actions/overview"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Core Actions",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "actions/run-pipeline",
+              "actions/read-settings",
+              "actions/read-secrets",
+              "actions/check-for-updates"
+            ]
+          },
+          {
+            "group": "App Management",
+            "pages": [
+              "actions/add-existing-app",
+              "actions/create-app",
+              "actions/increment-version-number"
+            ]
+          },
+          {
+            "group": "Build & Test",
+            "pages": [
+              "actions/determine-artifacts",
+              "actions/calculate-artifact-names",
+              "actions/analyze-tests",
+              "actions/sign"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "actions/deploy",
+              "actions/deliver",
+              "actions/determine-deployment-environments",
+              "actions/determine-delivery-targets"
+            ]
+          },
+          {
+            "group": "Development Environment",
+            "pages": [
+              "actions/create-development-environment"
+            ]
+          },
+          {
+            "group": "Documentation",
+            "pages": [
+              "actions/build-reference-documentation"
+            ]
+          },
+          {
+            "group": "Power Platform",
+            "pages": [
+              "actions/build-power-platform",
+              "actions/deploy-power-platform",
+              "actions/pull-power-platform-changes"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Settings",
+        "groups": [
+          {
+            "group": "Configuration",
+            "pages": [
+              "settings/overview",
+              "settings/basic-project",
+              "settings/basic-repository",
+              "settings/advanced",
+              "settings/conditional"
+            ]
+          },
+          {
+            "group": "Secrets Management",
+            "pages": [
+              "settings/secrets-overview",
+              "settings/github-secrets",
+              "settings/azure-keyvault"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

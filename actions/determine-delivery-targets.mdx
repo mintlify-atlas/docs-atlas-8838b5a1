@@ -1,0 +1,107 @@
+---
+title: Determine Delivery Targets
+description: Identify delivery targets and required secrets for AL-Go projects
+---
+
+The Determine Delivery Targets action analyzes your AL-Go projects and determines which delivery targets (AppSource, Storage, etc.) are configured, along with any required context secrets.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/DetermineDeliveryTargets@v5.0
+  id: determine
+  with:
+    projectsJson: '[".", "Project1"]'
+    checkContextSecrets: 'true'
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="projectsJson" type="string" default='["."]'>
+  Projects to investigate in JSON array format
+  
+  Examples:
+  - `'["."]'` - Current directory only
+  - `'["Project1", "Project2"]'` - Specific projects
+</ParamField>
+
+<ParamField path="checkContextSecrets" type="boolean" default="false">
+  Check whether context secret exists?
+  
+  When enabled, the action will verify that required secrets are available.
+</ParamField>
+
+## Outputs
+
+<ParamField path="DeliveryTargetsJson" type="string">
+  An array of Delivery Targets in compressed JSON format
+  
+  Contains information about each configured delivery target including type and settings.
+</ParamField>
+
+<ParamField path="ContextSecrets" type="string">
+  A comma-separated list of Context Secret names used
+  
+  Lists all secret names that are required for the identified delivery targets.
+</ParamField>
+
+## Example Workflow
+
+```yaml
+jobs:
+  determine:
+    runs-on: ubuntu-latest
+    outputs:
+      deliveryTargetsJson: ${{ steps.determine.outputs.DeliveryTargetsJson }}
+      contextSecrets: ${{ steps.determine.outputs.ContextSecrets }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine Delivery Targets
+        id: determine
+        uses: microsoft/AL-Go/Actions/DetermineDeliveryTargets@v5.0
+        with:
+          projectsJson: '["."]'
+          checkContextSecrets: 'true'
+  
+  deliver:
+    needs: determine
+    if: needs.determine.outputs.deliveryTargetsJson != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        deliveryTarget: ${{ fromJson(needs.determine.outputs.deliveryTargetsJson) }}
+    steps:
+      - name: Deliver to ${{ matrix.deliveryTarget }}
+        uses: microsoft/AL-Go/Actions/Deliver@v5.0
+        with:
+          deliveryTarget: ${{ matrix.deliveryTarget }}
+          artifacts: '.artifacts'
+```
+
+## Multi-Project Example
+
+```yaml
+- name: Determine Delivery Targets for Multiple Projects
+  id: determine
+  uses: microsoft/AL-Go/Actions/DetermineDeliveryTargets@v5.0
+  with:
+    projectsJson: '["App1", "App2", "App3"]'
+    checkContextSecrets: 'true'
+
+- name: Display required secrets
+  run: |
+    echo "Required secrets: ${{ steps.determine.outputs.ContextSecrets }}"
+```
+
+<Note>
+  This action is typically used before running the [Deliver](/actions/deliver) action to identify all configured delivery targets.
+</Note>
+
+<Warning>
+  When `checkContextSecrets` is enabled, ensure all required secrets are configured in your repository or organization settings.
+</Warning>

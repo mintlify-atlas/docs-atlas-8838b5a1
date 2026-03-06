@@ -1,0 +1,261 @@
+---
+title: Migrate from Azure DevOps (Without History)
+description: Learn how to migrate your Business Central repository from Azure DevOps to AL-Go for GitHub without preserving commit history
+---
+
+This guide explains how to migrate a repository from Azure DevOps to AL-Go for GitHub **without including the commit history**. This approach is simpler and faster, making it ideal when historical commits aren't needed.
+
+<Note>
+This migration process leaves your existing Azure DevOps repository untouched. You can continue working in Azure DevOps if needed while testing AL-Go for GitHub.
+</Note>
+
+## Overview
+
+This migration method uses VS Code and File Explorer to copy files from your Azure DevOps repository to a new AL-Go for GitHub repository. It's similar to setting up CI/CD for an existing app, but uses a more manual file transfer approach.
+
+## Prerequisites
+
+Before starting the migration, ensure you have:
+
+- Access to your Azure DevOps repository
+- A GitHub account
+- VS Code installed on your PC
+- Git credentials configured for both Azure DevOps and GitHub
+
+## Migration Process
+
+<Steps>
+
+<Step title="Clone Your Azure DevOps Repository">
+
+Navigate to your Azure DevOps repository and click the **Clone** button.
+
+![Azure DevOps Clone](https://github.com/microsoft/AL-Go/assets/10775043/3e61f1c1-6e29-477e-a5da-92bf3228005a)
+
+Clone the repository to your PC by selecting **Clone in VS Code** (or use your preferred cloning method). Once cloned, open the files in your file explorer.
+
+![Files in Explorer](https://github.com/microsoft/AL-Go/assets/10775043/f9925c6a-215b-4475-a062-9aeb20a2f1ee)
+
+</Step>
+
+<Step title="Create a New GitHub Repository from Template">
+
+Choose the appropriate AL-Go template for your project:
+
+<CardGroup cols={2}>
+  <Card title="Per-Tenant Extension" icon="cube" href="https://aka.ms/algopte">
+    Use this template for Per-Tenant Extensions (PTE)
+  </Card>
+  <Card title="AppSource App" icon="store" href="https://aka.ms/algoappsource">
+    Use this template for AppSource applications
+  </Card>
+</CardGroup>
+
+Click **Use this template**, select **Create a new repository**, and choose:
+- Repository owner
+- Repository name
+- Public or private visibility
+
+Click **Create repository from template** to create your new repository.
+
+![Create Repository](https://github.com/microsoft/AL-Go/assets/10775043/8b253c09-36aa-4334-94d1-9541f328ff06)
+
+</Step>
+
+<Step title="Clone the New GitHub Repository">
+
+In your new GitHub repository, click the **Code** button (shown as `<>`) and copy the git URL.
+
+![Clone GitHub Repo](https://github.com/microsoft/AL-Go/assets/10775043/94d1b0cd-96b4-48cb-bc10-0433d0e13e6c)
+
+In VS Code:
+1. Press `Ctrl+Shift+P`
+2. Select **Git Clone**
+3. Paste the git URL
+4. Select a location and clone the repository
+5. Open the cloned repository in VS Code
+
+</Step>
+
+<Step title="Copy Your Application Files">
+
+Return to the File Explorer window containing your cloned Azure DevOps files.
+
+<Warning>
+Do **NOT** copy the following folders:
+- `.git`
+- `.github`
+- `.azureDevOps`
+- `.pipelines`
+- `scripts`
+
+These contain Azure DevOps-specific configurations that won't be used in AL-Go for GitHub.
+</Warning>
+
+Select all folders containing:
+- Apps
+- Test apps
+- Other necessary files
+
+Drag these files to VS Code and select **Copy Folders**.
+
+![Copy Files](https://github.com/microsoft/AL-Go/assets/10775043/485d8117-f81e-4f18-8630-391d466ee5b6)
+
+</Step>
+
+<Step title="Configure AL-Go Settings">
+
+Modify the necessary settings for your application. Common settings to configure:
+
+### Repository Settings
+
+Typical settings you may need to modify include:
+
+- **appFolders** - Specify folders containing your apps ([documentation](https://aka.ms/algosettings#appfolders))
+- **testFolders** - Specify folders containing test apps ([documentation](https://aka.ms/algosettings#testfolders))
+- **runNumberOffset** - Adjust build numbering ([documentation](https://aka.ms/algosettings#runNumberOffset))
+
+### Code Analysis Settings
+
+- **enableAppSourceCop** - Enable AppSource validation ([documentation](https://aka.ms/algosettings#enableAppSourceCop))
+- **enablePerTenantExtensionCop** - Enable PTE validation ([documentation](https://aka.ms/algosettings#enablePerTenantExtensionCop))
+- **enableCodeCop** - Enable code analysis ([documentation](https://aka.ms/algosettings#enableCodeCop))
+- **enableUICop** - Enable UI validation ([documentation](https://aka.ms/algosettings#enableUICop))
+- **rulesetFile** - Specify custom ruleset ([documentation](https://aka.ms/algosettings#rulesetFile))
+- **enableExternalRulesets** - Allow external rulesets ([documentation](https://aka.ms/algosettings#enableExternalRulesets))
+
+### AppSource-Specific Settings
+
+- **appSourceMandatoryAffixes** - Define required affixes ([documentation](https://aka.ms/algosettings#appSourceMandatoryAffixes))
+
+### Required Secrets
+
+<Note>
+Secrets must be created in your GitHub repository settings under **Settings** > **Secrets and variables** > **Actions**.
+</Note>
+
+**For AppSource Apps:**
+- `LicenseFileUrl` - Secure direct download URL to your license file
+
+**For Code Signing (Optional):**
+- `CodeSignCertificateUrl` - Secure direct download URL to your PFX certificate
+- `CodeSignCertificatePassword` - Password for the PFX certificate
+
+</Step>
+
+<Step title="Commit and Push Your Changes">
+
+In VS Code's Source Control area:
+
+1. Click the **+** icon to **Add** all changed files to staging
+2. Enter a commit message (e.g., "Migrate from Azure DevOps")
+3. Click **Commit**
+4. Click **Sync Changes** to push to GitHub
+
+![Commit Changes](https://github.com/microsoft/AL-Go/assets/10775043/b5e0a078-581b-4a1b-bcbf-6b1e0f684255)
+
+</Step>
+
+<Step title="Verify the Migration">
+
+Navigate back to your GitHub repository to verify your files have been uploaded.
+
+![Files Uploaded](https://github.com/microsoft/AL-Go/assets/10775043/a0e37ff1-6b9a-4a09-973e-79e3b2d06ad0)
+
+</Step>
+
+<Step title="Monitor the CI/CD Workflow">
+
+Click **Actions** to see that the **CI/CD** workflow was automatically triggered by your commit.
+
+![CI/CD Workflow](https://github.com/microsoft/AL-Go/assets/10775043/2768cc67-dff4-47d6-906f-8c2eb3761e35)
+
+Open the running workflow to monitor status and view the summary. Wait for the build to complete.
+
+![Workflow Success](https://github.com/microsoft/AL-Go/assets/10775043/1f1a7e3e-f8f4-4b5f-805d-c5357439c527)
+
+</Step>
+
+<Step title="Review Build Artifacts and Test Results">
+
+Once the workflow completes, scroll down to view:
+- **Artifacts** - Built app files ready for deployment
+- **Test Results** - Automated test execution results
+
+![Test Results](https://github.com/microsoft/AL-Go/assets/10775043/130aef13-dbf1-4a4b-987c-74df6f915790)
+
+</Step>
+
+<Step title="Verify Repository History">
+
+Navigate to **Code** and click **Commits** to see the repository history.
+
+<Note>
+Since this migration method doesn't preserve history, you'll only see commits made after the migration.
+</Note>
+
+![Commit History](https://github.com/microsoft/AL-Go/assets/10775043/7458a5cf-356d-41f1-8e48-5805dec584d6)
+
+</Step>
+
+</Steps>
+
+## Next Steps
+
+After successfully migrating your repository:
+
+<CardGroup cols={2}>
+  <Card title="Configure Environments" icon="server">
+    Set up deployment environments for your applications
+  </Card>
+  <Card title="Set Up Continuous Deployment" icon="rocket">
+    Configure automatic deployments to your environments
+  </Card>
+  <Card title="Add Collaborators" icon="users">
+    Invite team members to your GitHub repository
+  </Card>
+  <Card title="Explore AL-Go Actions" icon="bolt">
+    Learn about available workflows and automation
+  </Card>
+</CardGroup>
+
+## When to Use This Method
+
+This migration approach is ideal when:
+
+- You don't need to preserve commit history
+- You want a clean start in GitHub
+- You're migrating a small to medium-sized project
+- You want the simplest migration process
+
+<Note>
+If you need to preserve your full commit history, use the [migration with history](/migration/with-history) guide instead.
+</Note>
+
+## Troubleshooting
+
+### Workflow Fails to Start
+
+If the CI/CD workflow doesn't automatically trigger:
+
+1. Go to **Settings** > **Actions** > **General**
+2. Select **Allow all actions and reusable workflows**
+3. Click **Save**
+4. Manually trigger the workflow from the **Actions** tab
+
+### Build Errors
+
+If the build fails:
+
+1. Check that `appFolders` and `testFolders` settings are correct
+2. Verify that all required secrets are configured
+3. Review the workflow logs for specific error messages
+4. Ensure your app.json files are valid
+
+### Missing Dependencies
+
+If dependencies are missing:
+
+1. Ensure all dependency apps are included in your repository
+2. Configure dependency download settings if using external dependencies
+3. Check that app dependencies are correctly specified in app.json files

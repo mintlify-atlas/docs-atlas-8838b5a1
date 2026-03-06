@@ -1,0 +1,569 @@
+---
+title: Update AL-Go System Files
+description: Keep your AL-Go for GitHub system files synchronized with the latest template updates
+---
+
+The Update AL-Go System Files workflow synchronizes your repository's AL-Go system files with the latest version from the template repository. This ensures you benefit from bug fixes, new features, and improvements to the AL-Go framework.
+
+## Overview
+
+AL-Go system files include:
+- **Workflow files** in `.github/workflows/`
+- **System scripts** in `.AL-Go/`
+- **Helper scripts** and configuration files
+
+Keeping these files updated ensures:
+- Access to new AL-Go features
+- Bug fixes and security patches
+- Performance improvements
+- Compatibility with latest Business Central versions
+
+<Note>
+  The CI/CD workflow automatically checks for updates and notifies you when they're available.
+</Note>
+
+## When to Update
+
+### Automatic Notifications
+
+Every CI/CD run checks for updates. You'll see a notification if updates are available:
+
+```
+Updates are available for AL-Go System Files
+```
+
+### Manual Checks
+
+Run this workflow periodically to ensure you're on the latest version, especially:
+- Before creating releases
+- When troubleshooting issues
+- After major AL-Go announcements
+- Monthly as part of maintenance
+
+## Prerequisites
+
+<Warning>
+  This workflow requires the `ghTokenWorkflow` secret to create pull requests.
+</Warning>
+
+### Setting Up ghTokenWorkflow
+
+<Steps>
+  <Step title="Create Personal Access Token">
+    Generate a GitHub Personal Access Token (PAT):
+
+    1. Go to **GitHub Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+    2. Click **Generate new token (classic)**
+    3. Name it `AL-Go Workflow Token`
+    4. Select scopes:
+       - `repo` (Full control of private repositories)
+       - `workflow` (Update GitHub Action workflows)
+    5. Click **Generate token** and copy the token
+  </Step>
+
+  <Step title="Add Secret to Repository">
+    Add the PAT as a repository secret:
+
+    1. Go to repository **Settings** → **Secrets and variables** → **Actions**
+    2. Click **New repository secret**
+    3. Name: `ghTokenWorkflow`
+    4. Value: Paste your PAT
+    5. Click **Add secret**
+  </Step>
+</Steps>
+
+<Note>
+  The `ghTokenWorkflow` secret allows the workflow to create pull requests that trigger other workflows. The default `GITHUB_TOKEN` cannot do this due to security restrictions.
+</Note>
+
+## Triggering the Workflow
+
+### Manual Trigger
+
+<Steps>
+  <Step title="Navigate to Actions">
+    Go to your repository and click the **Actions** tab.
+  </Step>
+
+  <Step title="Select Update AL-Go System Files">
+    Click on **Update AL-Go System Files** in the workflows list.
+  </Step>
+
+  <Step title="Run Workflow">
+    Click **Run workflow** and configure the parameters.
+  </Step>
+</Steps>
+
+### Automatic Trigger via Workflow Call
+
+The workflow can be called from other workflows:
+
+```yaml
+jobs:
+  update-system-files:
+    uses: ./.github/workflows/UpdateGitHubGoSystemFiles.yaml
+    with:
+      downloadLatest: true
+      directCommit: false
+```
+
+## Workflow Parameters
+
+<ParamField path="templateUrl" type="string">
+  **Template Repository URL**
+  
+  Override the default template repository URL.
+  
+  - Leave empty to use the URL from AL-Go settings
+  - Specify `{owner}/{repo}@{branch}` to use a different template
+  
+  Example: `microsoft/AL-Go-PTE@main`
+  
+  Default: Uses `templateUrl` from `.github/AL-Go-Settings.json`
+</ParamField>
+
+<ParamField path="downloadLatest" type="boolean" default="true">
+  **Download latest from template repository**
+  
+  When true, downloads the latest version from the template.
+  When false, uses a previously cached version.
+  
+  Example: `true`
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  **Direct Commit?**
+  
+  Controls how updates are applied:
+  - `false`: Creates a pull request (recommended)
+  - `true`: Commits directly to the branch
+  
+  <Warning>
+    Direct commit bypasses code review. Use pull requests for transparency and testing.
+  </Warning>
+  
+  Example: `false`
+</ParamField>
+
+<ParamField path="includeBranches" type="string">
+  **Branches to update**
+  
+  Comma-separated list of branches to update. Supports wildcards.
+  
+  - Leave empty to update current branch only
+  - `main,release/*`: Update main and all release branches
+  - `*`: Update all branches (use with caution)
+  
+  Example: `main,release/*`
+  
+  Default: Current branch only
+</ParamField>
+
+## Workflow Jobs
+
+<Steps>
+  <Step title="Initialize">
+    Determines which branches to update and which template to use.
+
+    **Actions Performed:**
+    - Reads AL-Go settings to get the template URL
+    - Resolves branch patterns to actual branch names
+    - Determines the template URL (from input or settings)
+    - Validates configuration
+
+    **Branch Resolution:**
+    - `includeBranches` parameter is expanded
+    - Wildcards like `release/*` match all release branches
+    - Each matched branch gets its own update job
+  </Step>
+
+  <Step title="Update AL-Go System Files (per branch)">
+    Updates system files for each branch.
+
+    **Update Process:**
+    1. **Checkout**: Checks out the target branch
+    2. **Read Settings**: Reads branch-specific AL-Go settings
+    3. **Read Secrets**: Retrieves `ghTokenWorkflow` secret
+    4. **Download Template**: Downloads latest from template repository
+    5. **Compare Files**: Identifies differences
+    6. **Update Files**: Updates system files
+    7. **Create PR or Commit**: Either creates a pull request or commits directly
+
+    **File Comparison:**
+    The workflow:
+    - Compares your files with template files
+    - Identifies new, updated, and removed files
+    - Preserves your custom changes to non-system files
+    - Warns about local modifications to system files
+  </Step>
+
+  <Step title="Finalize">
+    Completes the workflow and reports telemetry.
+
+    Always runs to ensure proper cleanup.
+  </Step>
+</Steps>
+
+## What Gets Updated
+
+### System Files
+
+The workflow updates these files:
+
+<CardGroup cols={2}>
+  <Card title="Workflow Files" icon="diagram-project">
+    **Location**: `.github/workflows/`
+    
+    - `CICD.yaml`
+    - `CreateRelease.yaml`
+    - `PullRequestHandler.yaml`
+    - `PublishToEnvironment.yaml`
+    - `UpdateGitHubGoSystemFiles.yaml`
+    - All other workflow files from template
+  </Card>
+
+  <Card title="System Scripts" icon="file-code">
+    **Location**: `.AL-Go/`
+    
+    - Helper scripts
+    - Configuration templates
+    - Action implementations
+  </Card>
+</CardGroup>
+
+### Files NOT Updated
+
+These files are never modified:
+
+- Your AL application code
+- `AL-Go-Settings.json` (only structure may be validated)
+- Custom workflow files you've added
+- Project-specific configuration files
+- Repository secrets and settings
+
+<Note>
+  If you've modified system files, the workflow will warn you and may revert your changes. Keep customizations in separate files when possible.
+</Note>
+
+## Update Pull Request
+
+When `directCommit` is false (recommended), the workflow creates a pull request:
+
+### PR Contents
+
+- **Title**: `Update AL-Go System Files`
+- **Description**: Summary of changes from the template
+- **Changes**: All updated system files
+- **Branch**: `update-al-go-system-files/{timestamp}` or similar
+
+### Reviewing the PR
+
+<Steps>
+  <Step title="Review Changes">
+    Examine the changes to understand what's being updated:
+
+    - New features or improvements
+    - Bug fixes
+    - Configuration changes
+    - Removed deprecated files
+  </Step>
+
+  <Step title="Check for Conflicts">
+    If you've customized system files, ensure the update doesn't break functionality.
+  </Step>
+
+  <Step title="Test the Changes">
+    The PR build workflow will run automatically. Verify it passes.
+  </Step>
+
+  <Step title="Merge the PR">
+    Once satisfied, merge the pull request to apply the updates.
+  </Step>
+</Steps>
+
+<Warning>
+  If the PR shows that your custom changes to system files are being reverted, consider whether those customizations are still necessary or if they can be achieved differently.
+</Warning>
+
+## Multi-Branch Updates
+
+Update multiple branches simultaneously:
+
+### Example: Update Main and Release Branches
+
+<Steps>
+  <Step title="Run Workflow">
+    Set parameters:
+    - **templateUrl**: (leave empty)
+    - **downloadLatest**: `true`
+    - **directCommit**: `false`
+    - **includeBranches**: `main,release/*`
+  </Step>
+
+  <Step title="Review PRs">
+    A pull request is created for each branch.
+  </Step>
+
+  <Step title="Merge PRs">
+    Review and merge each PR individually.
+  </Step>
+</Steps>
+
+<Note>
+  Each branch is updated independently, allowing you to test updates on release branches before applying to main.
+</Note>
+
+## Template Repositories
+
+AL-Go supports two template types:
+
+<CardGroup cols={2}>
+  <Card title="Per-Tenant Extension" icon="building">
+    **Template**: `microsoft/AL-Go-PTE`
+    
+    For Business Central Per-Tenant Extensions with optional PowerPlatform integration.
+  </Card>
+
+  <Card title="AppSource App" icon="store">
+    **Template**: `microsoft/AL-Go-AppSource`
+    
+    For Business Central AppSource apps with AppSource submission workflows.
+  </Card>
+</CardGroup>
+
+### Using a Custom Template
+
+You can fork the AL-Go template and use your custom version:
+
+1. **Fork the template repository**
+
+2. **Update AL-Go-Settings.json**:
+   ```json
+   {
+     "templateUrl": "https://github.com/myorg/my-al-go-template@main"
+   }
+   ```
+
+3. **Run the update workflow** to sync with your custom template
+
+<Warning>
+  Custom templates require maintenance. You'll need to periodically merge updates from the official template.
+</Warning>
+
+## Handling Modified System Files
+
+If you've modified AL-Go system files:
+
+### The Problem
+
+AL-Go doesn't support modifications to system files and will:
+- Detect the modifications
+- Warn about them in CI/CD runs
+- Revert them when updating
+
+### The Solution
+
+<Steps>
+  <Step title="Extract Customizations">
+    Identify what you've customized and why.
+  </Step>
+
+  <Step title="Use AL-Go Settings">
+    Move configuration to `.github/AL-Go-Settings.json` when possible:
+
+    ```json
+    {
+      "githubRunner": "ubuntu-latest",
+      "runs-on": "[ self-hosted, linux ]"
+    }
+    ```
+  </Step>
+
+  <Step title="Create Custom Workflows">
+    For workflow customizations, create separate workflow files that call the system workflows.
+  </Step>
+
+  <Step title="Use Composite Actions">
+    Encapsulate custom logic in composite actions in your repository.
+  </Step>
+</Steps>
+
+<Note>
+  If you absolutely need custom behavior, fork the template repository and maintain your own template.
+</Note>
+
+## Commit Options
+
+The workflow respects `commitOptions` in AL-Go settings:
+
+```json
+{
+  "commitOptions": {
+    "createPullRequest": true,
+    "pullRequestTitle": "Update AL-Go System Files",
+    "pullRequestBody": "Automated update from template repository"
+  }
+}
+```
+
+## Troubleshooting
+
+<CardGroup cols={2}>
+  <Card title="ghTokenWorkflow Not Found" icon="key">
+    Ensure the secret is created with `workflow` scope. Check that it's not expired.
+  </Card>
+
+  <Card title="Update Fails with Conflicts" icon="code-merge">
+    Your system files may have custom changes. Review the conflicts and decide whether to keep or remove customizations.
+  </Card>
+
+  <Card title="PR Not Created" icon="code-pull-request">
+    Verify `ghTokenWorkflow` secret exists and `directCommit` is false. Check workflow permissions.
+  </Card>
+
+  <Card title="No Updates Found" icon="circle-check">
+    You're already on the latest version. No action needed.
+  </Card>
+</CardGroup>
+
+## Update Frequency
+
+### Recommended Schedule
+
+<CardGroup cols={2}>
+  <Card title="Production Repositories" icon="calendar">
+    **Monthly** or when notified of critical updates
+    
+    Balance stability with new features.
+  </Card>
+
+  <Card title="Development Repositories" icon="calendar-days">
+    **Weekly** or after each AL-Go release
+    
+    Stay current with latest features.
+  </Card>
+</CardGroup>
+
+### Monitoring Updates
+
+- Watch the [AL-Go repository](https://github.com/microsoft/AL-Go) for releases
+- Check CI/CD workflow outputs for update notifications
+- Review AL-Go release notes for breaking changes
+
+## Best Practices
+
+<Steps>
+  <Step title="Use Pull Requests">
+    Always use pull requests (not direct commit) to review changes before applying.
+  </Step>
+
+  <Step title="Test After Updating">
+    Run your CI/CD workflow after updating to ensure compatibility.
+  </Step>
+
+  <Step title="Update Dependencies Together">
+    If updating multiple branches, update them at the same time for consistency.
+  </Step>
+
+  <Step title="Read Release Notes">
+    Review AL-Go release notes to understand what changed.
+  </Step>
+
+  <Step title="Avoid Modifying System Files">
+    Use AL-Go settings and custom workflows instead of modifying system files.
+  </Step>
+
+  <Step title="Keep ghTokenWorkflow Secure">
+    Treat this secret as highly sensitive. Rotate it regularly.
+  </Step>
+</Steps>
+
+## Example Scenarios
+
+### Scenario 1: Regular Monthly Update
+
+<Steps>
+  <Step title="Check for Updates">
+    Review the latest CI/CD run for update notifications.
+  </Step>
+
+  <Step title="Run Update Workflow">
+    - **templateUrl**: (empty)
+    - **downloadLatest**: `true`
+    - **directCommit**: `false`
+    - **includeBranches**: `main`
+  </Step>
+
+  <Step title="Review and Merge PR">
+    Review changes, run tests, and merge.
+  </Step>
+</Steps>
+
+### Scenario 2: Update All Branches
+
+<Steps>
+  <Step title="Run Update Workflow">
+    - **templateUrl**: (empty)
+    - **downloadLatest**: `true`
+    - **directCommit**: `false`
+    - **includeBranches**: `main,release/*,feature/*`
+  </Step>
+
+  <Step title="Review PRs">
+    Review each PR individually.
+  </Step>
+
+  <Step title="Merge Strategically">
+    Merge to feature branches first, then release, then main.
+  </Step>
+</Steps>
+
+### Scenario 3: Switch Templates
+
+<Steps>
+  <Step title="Update Settings">
+    Change `templateUrl` in `.github/AL-Go-Settings.json`:
+    ```json
+    {
+      "templateUrl": "https://github.com/myorg/my-template@main"
+    }
+    ```
+  </Step>
+
+  <Step title="Run Update Workflow">
+    - **templateUrl**: (empty, uses new setting)
+    - **downloadLatest**: `true`
+    - **directCommit**: `false`
+    - **includeBranches**: (empty)
+  </Step>
+
+  <Step title="Review Major Changes">
+    The PR will show all differences between templates.
+  </Step>
+</Steps>
+
+## Advanced: Workflow Integration
+
+Call the update workflow from other workflows:
+
+```yaml
+name: Weekly Maintenance
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday
+
+jobs:
+  update-system-files:
+    uses: ./.github/workflows/UpdateGitHubGoSystemFiles.yaml
+    secrets: inherit
+    with:
+      downloadLatest: true
+      directCommit: false
+```
+
+This automatically creates update PRs weekly.
+
+<Note>
+  Automated updates help you stay current, but always review PRs before merging.
+</Note>

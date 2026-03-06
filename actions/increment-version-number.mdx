@@ -1,0 +1,100 @@
+---
+title: Increment Version Number
+description: Increment the version number of apps in your AL-Go repository
+---
+
+The **Increment Version Number** action updates the version number in your app.json files and optionally updates dependency version numbers.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/IncrementVersionNumber@main
+  with:
+    versionNumber: '+0.1'
+```
+
+## Inputs
+
+<ParamField path="versionNumber" type="string" required>
+  The version to update to. Supports multiple formats:
+  - `Major.Minor[.Build]` - Set absolute version (e.g., `2.0.0`)
+  - `+1` - Bump to the next major version
+  - `+0.1` - Bump to the next minor version
+  - `+0.0.1` - Bump to the next build/patch version
+</ParamField>
+
+<ParamField path="projects" type="string" default="*">
+  List of project names if the repository is setup for multiple projects. Use `*` for all projects.
+</ParamField>
+
+<ParamField path="skipUpdatingDependencies" type="boolean" default="false">
+  Whether to skip updating dependency version numbers in all apps.
+</ParamField>
+
+<ParamField path="updateBranch" type="string" default="${{ github.ref_name }}">
+  Set the branch to update. Defaults to the current branch.
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  Whether to commit directly to the branch without creating a pull request.
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action. Options: `powershell` or `pwsh`.
+</ParamField>
+
+<ParamField path="actor" type="string" default="${{ github.actor }}">
+  The GitHub actor running the action.
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action.
+</ParamField>
+
+## Examples
+
+### Increment minor version
+
+```yaml
+name: Increment Version
+on:
+  workflow_dispatch:
+
+jobs:
+  increment:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: microsoft/AL-Go/Actions/IncrementVersionNumber@main
+        with:
+          versionNumber: '+0.1'
+```
+
+### Set absolute version for all projects
+
+```yaml
+- uses: microsoft/AL-Go/Actions/IncrementVersionNumber@main
+  with:
+    versionNumber: '2.0.0'
+    projects: '*'
+    skipUpdatingDependencies: false
+```
+
+### Increment build version without updating dependencies
+
+```yaml
+- uses: microsoft/AL-Go/Actions/IncrementVersionNumber@main
+  with:
+    versionNumber: '+0.0.1'
+    skipUpdatingDependencies: true
+    directCommit: true
+```
+
+<Note>
+  By default, the action updates both the app versions and their dependency references to maintain consistency across your repository.
+</Note>
+
+<Warning>
+  When using `directCommit: true`, changes are committed directly without review. Use with caution on protected branches.
+</Warning>

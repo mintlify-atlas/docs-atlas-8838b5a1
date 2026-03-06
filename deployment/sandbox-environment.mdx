@@ -1,0 +1,245 @@
+---
+title: Register a Sandbox Environment
+description: Learn how to configure a sandbox environment for continuous deployment in AL-Go for GitHub
+---
+
+Sandbox environments enable continuous deployment from your GitHub repository to a Business Central test environment. This guide walks you through registering and configuring a sandbox environment for automatic deployment using Service-to-Service (S2S) authentication.
+
+## Prerequisites
+
+Before registering a sandbox environment, ensure you have:
+
+- A GitHub repository with AL-Go for GitHub configured
+- A Microsoft Entra application registration with client credentials
+- An online Business Central sandbox environment (e.g., "QA")
+- S2S authentication configured for your environment ([setup instructions](https://go.microsoft.com/fwlink/?linkid=2217415&clcid=0x409))
+- Completed the ["Add a test app to an existing project"](../scenarios/add-test-app.md) scenario
+
+<Note>
+For access to environments, environment secrets, and deployment branches in private or internal repositories, you must use **GitHub Pro**, **GitHub Team**, or **GitHub Enterprise**.
+
+If you're using a free GitHub account, you can use the [environments setting](https://aka.ms/algosettings#environments) and a secret named `<EnvironmentName>_AuthContext` instead of GitHub environments and environment secrets.
+</Note>
+
+## Setting Up Your Sandbox Environment
+
+<Steps>
+  <Step title="Create GitHub Environment">
+    Navigate to your repository on GitHub and configure the environment:
+
+    1. Open **Settings** in your repository
+    2. Select **Environments** from the sidebar
+    3. Click **New Environment**
+    4. Enter the **name of your Business Central environment** (e.g., "QA")
+    5. Choose **Configure environment**
+
+    The environment name in GitHub should match your Business Central environment name.
+  </Step>
+
+  <Step title="Configure Authentication Secret">
+    Create the authentication secret for your sandbox environment:
+
+    1. Under **Environment secrets**, click **Add environment secret**
+    2. Set the secret name to `AUTHCONTEXT`
+    3. Enter a **compressed JSON** construct with your authentication details:
+
+    ```json
+    {"TenantID":"<TenantID>","ClientID":"<ClientID>","ClientSecret":"<ClientSecret>"}
+    ```
+
+    Replace the placeholders:
+    - `<TenantID>`: Your Microsoft Entra tenant ID where the environment is hosted
+    - `<ClientID>`: The application (client) ID from your Microsoft Entra app registration
+    - `<ClientSecret>`: The client secret value from your app registration
+
+    <Warning>
+    The secret **must** be compressed JSON (single line) with **no newline** after the value. Multi-line JSON will cause authentication failures.
+    </Warning>
+  </Step>
+
+  <Step title="Deploy to Sandbox Environment">
+    Trigger a deployment to your sandbox environment:
+
+    1. Navigate to **Actions** in your repository
+    2. Select the **Publish To Environment** workflow
+    3. Click **Run workflow**
+    4. Configure the deployment:
+       - **App version**: Enter `latest` (or `current` for released versions)
+       - **Environment to receive the new version**: Enter your environment name or keep `*` for all environments
+    5. Click **Run workflow**
+
+    <Note>
+    The default app version is `current`, which refers to the latest release. If you haven't created a release yet, use `latest` to deploy the most recent build artifacts.
+    </Note>
+  </Step>
+
+  <Step title="Verify Deployment">
+    After the workflow completes:
+
+    1. **Check workflow output**: Review the workflow logs to verify successful deployment
+    2. **Test in Business Central**: Open your QA environment and verify the app is installed
+    3. **Verify app functionality**: Navigate to the app in Business Central and test its features
+  </Step>
+</Steps>
+
+## Environment Configuration Options
+
+### Continuous Deployment
+
+By default, sandbox environments support continuous deployment from your CI/CD pipeline. Every successful build on specified branches will automatically deploy to your sandbox.
+
+```json
+{
+  "environments": [
+    "QA",
+    "DEV"
+  ]
+}
+```
+
+### Environment Name Mapping
+
+If your Business Central environment name contains spaces or special characters, map your GitHub environment name to your Business Central environment name:
+
+```json
+{
+  "DeployToQA": {
+    "EnvironmentName": "QA Environment"
+  }
+}
+```
+
+### Deployment Branch Protection
+
+Control which branches can deploy to your sandbox environment:
+
+```json
+{
+  "DeployToQA": {
+    "Branches": ["main", "develop", "release/*"]
+  }
+}
+```
+
+## Authentication Methods
+
+### Service-to-Service (S2S) Authentication
+
+S2S authentication uses Microsoft Entra application credentials for secure, automated deployments. This is the recommended method for production use.
+
+**Setup requirements:**
+- Microsoft Entra app registration
+- API permissions configured for Business Central
+- Client secret generated
+- App registration added to Business Central environment
+
+### Alternative: GitHub Environments Setting
+
+For free GitHub accounts without access to GitHub Environments, use the `environments` setting in your AL-Go settings:
+
+```json
+{
+  "environments": ["QA"],
+  "QA_AUTHCONTEXT": "Use a repository secret named QA_AUTHCONTEXT"
+}
+```
+
+Then create a repository secret named `QA_AUTHCONTEXT` with the same JSON format.
+
+## Troubleshooting
+
+<CardGroup cols={2}>
+  <Card title="Authentication Failures" icon="lock">
+    **Symptoms**: 401 Unauthorized errors during deployment
+
+    **Solutions**:
+    - Verify the client secret hasn't expired
+    - Check that the app registration has proper API permissions
+    - Ensure the JSON secret is properly compressed (no newlines)
+    - Confirm the TenantID, ClientID, and ClientSecret are correct
+  </Card>
+
+  <Card title="Environment Not Found" icon="search">
+    **Symptoms**: Environment name not recognized during deployment
+
+    **Solutions**:
+    - Verify the environment name matches exactly (case-sensitive)
+    - Check that the environment exists in your Business Central tenant
+    - Use the `EnvironmentName` mapping if the name contains special characters
+    - Ensure the environment is properly configured for S2S authentication
+  </Card>
+
+  <Card title="Deployment Hangs or Times Out" icon="clock">
+    **Symptoms**: Workflow runs for extended periods without completing
+
+    **Solutions**:
+    - Check Business Central service health
+    - Verify network connectivity between GitHub and your BC environment
+    - Review environment capacity and performance
+    - Check for conflicts with other deployments
+  </Card>
+
+  <Card title="App Version Errors" icon="code-branch">
+    **Symptoms**: "App version not found" errors
+
+    **Solutions**:
+    - Use `latest` for unreleased builds
+    - Use `current` for the latest release
+    - Verify that a release has been created if using `current`
+    - Check artifact availability in workflow runs
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Use Separate Environments">
+    Maintain distinct environments for different stages:
+    - **DEV**: Active development and testing
+    - **QA**: Quality assurance and user acceptance testing
+    - **UAT**: Pre-production validation
+  </Step>
+
+  <Step title="Implement Branch Strategies">
+    Configure different branches for different environments:
+    - `develop` branch → DEV environment
+    - `main` branch → QA environment
+    - `release/*` branches → UAT environment
+  </Step>
+
+  <Step title="Rotate Secrets Regularly">
+    Security best practices:
+    - Rotate client secrets every 90 days
+    - Use Azure Key Vault for centralized secret management
+    - Monitor secret expiration dates
+    - Implement automated secret rotation where possible
+  </Step>
+
+  <Step title="Monitor Deployments">
+    Set up monitoring and notifications:
+    - Enable GitHub Actions notifications
+    - Review deployment logs regularly
+    - Track deployment frequency and success rates
+    - Set up alerts for failed deployments
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Production Environment" href="./production-environment">
+    Learn how to configure production environments for manual deployment
+  </Card>
+
+  <Card title="Continuous Deployment" href="./continuous-deployment">
+    Explore advanced continuous deployment configurations
+  </Card>
+
+  <Card title="Delivery Targets" href="./delivery-targets">
+    Set up NuGet feeds and package delivery
+  </Card>
+
+  <Card title="Create a Release" href="../scenarios/create-release">
+    Learn how to create releases for production deployment
+  </Card>
+</CardGroup>

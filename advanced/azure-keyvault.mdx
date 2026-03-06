@@ -1,0 +1,421 @@
+---
+title: Azure KeyVault Integration
+description: Secure your secrets and credentials using Azure KeyVault instead of GitHub repository secrets
+---
+
+AL-Go for GitHub supports Azure KeyVault for centralized secret management, allowing you to store sensitive credentials like authentication contexts and tokens securely in Azure instead of GitHub.
+
+## Benefits of Azure KeyVault
+
+<CardGroup cols={3}>
+  <Card title="Centralized Management" icon="database">
+    Store all secrets in one secure location accessible across repositories
+  </Card>
+  <Card title="Enhanced Security" icon="shield">
+    Use Azure's enterprise-grade security features and HSM support
+  </Card>
+  <Card title="Audit & Compliance" icon="clipboard-check">
+    Track secret access and meet compliance requirements
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+Before integrating Azure KeyVault with AL-Go, ensure you have:
+
+- Completed AL-Go repository setup
+- An Azure KeyVault instance created
+- Azure Active Directory app registration with KeyVault access
+- Appropriate permissions to configure service principals
+
+<Note>
+If you need Hardware Security Module (HSM) support, you must use a Premium SKU KeyVault. See [Microsoft's documentation](https://learn.microsoft.com/en-us/azure/key-vault/keys/about-keys) for more information.
+</Note>
+
+## Setup Overview
+
+Integrating Azure KeyVault with AL-Go involves two main steps:
+
+1. **Create Azure service principal** - Set up authentication between GitHub and Azure
+2. **Configure AL-Go settings** - Connect your repository to the KeyVault
+
+## Step 1: Create Service Principal
+
+Follow Microsoft's guide on [connecting from GitHub to Azure](https://learn.microsoft.com/azure/developer/github/connect-from-azure?tabs=azure-portal%2Cwindows#use-the-azure-login-action-with-a-service-principal-secret) to create a service principal with KeyVault access.
+
+<Steps>
+  <Step title="Create App Registration">
+    In Azure Portal, create a new App Registration:
+    - Navigate to Azure Active Directory > App registrations
+    - Click "New registration"
+    - Name your application (use a verified domain, e.g., `https://myapp.mydomainname.com`)
+    - Select appropriate account type
+  </Step>
+  
+  <Step title="Create Client Secret">
+    Generate a client secret for the app registration:
+    - Open your app registration
+    - Go to "Certificates & secrets"
+    - Create a new client secret
+    - Copy the secret value (you won't be able to see it again)
+  </Step>
+  
+  <Step title="Grant KeyVault Access">
+    Assign permissions to access your KeyVault:
+    - Open your KeyVault in Azure Portal
+    - Go to "Access policies"
+    - Add access policy with "Get" and "List" secret permissions
+    - Select the service principal you created
+    - Save the access policy
+  </Step>
+  
+  <Step title="Create AZURE_CREDENTIALS JSON">
+    Build the authentication JSON with the following structure:
+
+    ```json
+    {
+      "clientId": "<your-client-id>",
+      "clientSecret": "<your-client-secret>",
+      "tenantId": "<your-tenant-id>",
+      "subscriptionId": "<your-subscription-id>",
+      "keyVaultName": "<your-keyvault-name>"
+    }
+    ```
+
+    <Note>
+    Compress this JSON (remove whitespace) before adding it as a secret.
+    </Note>
+  </Step>
+</Steps>
+
+## Step 2: Configure GitHub Repository
+
+Once your Azure resources are ready, configure your GitHub repository to use KeyVault.
+
+<Steps>
+  <Step title="Add AZURE_CREDENTIALS Secret">
+    Add the compressed JSON from Step 1 as a repository secret:
+    - Go to your repository Settings > Secrets and variables > Actions
+    - Click "New repository secret"
+    - Name: `AZURE_CREDENTIALS`
+    - Value: The compressed JSON containing service principal details and KeyVault name
+  </Step>
+  
+  <Step title="Optional: Add KeyVault Name to Settings">
+    Alternatively, you can specify the KeyVault name in `.github/AL-Go-Settings.json`:
+
+    ```json
+    {
+      "keyVaultName": "<your-keyvault-name>"
+    }
+    ```
+
+    <Note>
+    If specified in settings, you don't need to include `keyVaultName` in the AZURE_CREDENTIALS JSON.
+    </Note>
+  </Step>
+</Steps>
+
+## Migrating Secrets to KeyVault
+
+Move your existing GitHub secrets to Azure KeyVault for centralized management.
+
+<Steps>
+  <Step title="Add Secrets to KeyVault">
+    Transfer your GitHub secrets to Azure KeyVault:
+
+    <Tabs>
+      <Tab title="Azure Portal">
+        1. Navigate to your KeyVault in Azure Portal
+        2. Go to "Secrets" section
+        3. Click "Generate/Import"
+        4. Add each secret with the same name used in GitHub
+      </Tab>
+      
+      <Tab title="Azure CLI">
+        ```bash
+        # Add authContext secret
+        az keyvault secret set \
+          --vault-name <your-keyvault-name> \
+          --name authContext \
+          --value '<your-auth-context-json>'
+
+        # Add ghTokenWorkflow secret
+        az keyvault secret set \
+          --vault-name <your-keyvault-name> \
+          --name ghTokenWorkflow \
+          --value '<your-github-token>'
+        ```
+      </Tab>
+      
+      <Tab title="PowerShell">
+        ```powershell
+        # Import Azure module if not already loaded
+        Import-Module Az.KeyVault
+
+        # Connect to Azure
+        Connect-AzAccount
+
+        # Add authContext secret
+        $secretValue = ConvertTo-SecureString '<your-auth-context-json>' -AsPlainText -Force
+        Set-AzKeyVaultSecret -VaultName '<your-keyvault-name>' -Name 'authContext' -SecretValue $secretValue
+
+        # Add ghTokenWorkflow secret
+        $tokenValue = ConvertTo-SecureString '<your-github-token>' -AsPlainText -Force
+        Set-AzKeyVaultSecret -VaultName '<your-keyvault-name>' -Name 'ghTokenWorkflow' -SecretValue $tokenValue
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Remove GitHub Secrets">
+    After confirming KeyVault access works, remove the secrets from:
+    - Repository secrets (Settings > Secrets and variables > Actions)
+    - Environment secrets (Settings > Environments > [environment] > Secrets)
+
+    <Warning>
+    Test KeyVault integration before removing GitHub secrets to ensure continuity.
+    </Warning>
+  </Step>
+</Steps>
+
+## Common Secrets to Store
+
+These are typical secrets to migrate to Azure KeyVault:
+
+<Tabs>
+  <Tab title="Authentication">
+    **authContext**
+    - Business Central environment authentication
+    - Format: Compressed JSON with authentication details
+    - Used by: Deployment workflows
+
+    **[Environment]_AuthContext**
+    - Environment-specific authentication contexts
+    - Format: Compressed JSON
+    - Used by: Deploy to specific environments
+  </Tab>
+  
+  <Tab title="GitHub Integration">
+    **ghTokenWorkflow**
+    - GitHub Personal Access Token for workflow automation
+    - Permissions: repo, workflow, write:packages
+    - Used by: Update AL-Go System Files, Create Release
+
+    **GhTokenWorkflow**
+    - Alternative naming convention
+    - Same purpose as ghTokenWorkflow
+  </Tab>
+  
+  <Tab title="Deployment">
+    **AppSourceContext**
+    - AppSource submission credentials
+    - Format: Compressed JSON with tenant and product details
+    - Used by: Publish to AppSource workflow
+
+    **StorageContext**
+    - Azure Storage account credentials for artifact storage
+    - Format: Compressed JSON with connection details
+    - Used by: Publish to Storage workflow
+  </Tab>
+  
+  <Tab title="Custom Delivery">
+    **[DeliveryTarget]Context**
+    - Custom delivery target credentials
+    - Format: Custom JSON matching your delivery script requirements
+    - Used by: Custom delivery workflows
+  </Tab>
+</Tabs>
+
+## Verification
+
+Verify that AL-Go can successfully access secrets from Azure KeyVault.
+
+<Steps>
+  <Step title="Run CI/CD Pipeline">
+    Trigger a CI/CD workflow to test basic KeyVault integration:
+    - Push a commit or manually trigger the workflow
+    - Monitor the workflow execution for authentication success
+    - Verify that builds and tests complete without authentication errors
+  </Step>
+  
+  <Step title="Test Deployment">
+    If you migrated deployment secrets, test environment deployment:
+    - Trigger a deployment to a configured environment
+    - Verify the workflow retrieves `authContext` from KeyVault
+    - Confirm successful deployment to target environment
+  </Step>
+  
+  <Step title="Test AL-Go Updates">
+    Run "Update AL-Go System Files" to verify `ghTokenWorkflow` access:
+    - Navigate to Actions > Update AL-Go System Files
+    - Run the workflow
+    - Verify it can access the token from KeyVault
+    - Confirm successful completion
+  </Step>
+</Steps>
+
+## Secret Naming Conventions
+
+AL-Go looks for secrets in this order:
+
+1. **Environment secrets** (if deploying to a specific GitHub environment)
+2. **Repository secrets**
+3. **Azure KeyVault secrets** (if AZURE_CREDENTIALS is configured)
+
+<Note>
+Secret names in KeyVault should match exactly the names AL-Go expects (e.g., `authContext`, `ghTokenWorkflow`). Secret names are case-sensitive.
+</Note>
+
+## KeyVault Secret Format Examples
+
+### authContext Secret
+
+```json
+{
+  "tenantID": "<your-tenant-id>",
+  "clientID": "<your-client-id>",
+  "clientSecret": "<your-client-secret>",
+  "scopes": "https://api.businesscentral.dynamics.com/.default",
+  "authority": "https://login.microsoftonline.com"
+}
+```
+
+### ghTokenWorkflow Secret
+
+```
+ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+<Note>
+Store just the token value as a string, not as JSON.
+</Note>
+
+## Advanced Configuration
+
+### Multiple KeyVaults
+
+You can use different KeyVaults for different purposes:
+
+```json
+{
+  "keyVaultName": "<default-keyvault>",
+  "environments": ["Production", "Staging"],
+  "DeployToProduction": {
+    "keyVaultName": "<production-keyvault>"
+  },
+  "DeployToStaging": {
+    "keyVaultName": "<staging-keyvault>"
+  }
+}
+```
+
+### KeyVault with Firewall
+
+If your KeyVault has network restrictions:
+
+<Warning>
+- Ensure GitHub Actions IP ranges are allowed
+- Or use a self-hosted runner within your network
+- Configure KeyVault firewall to allow your runner's IP addresses
+</Warning>
+
+### Managed Identity (Self-Hosted Runners)
+
+For self-hosted runners in Azure, you can use Managed Identity instead of service principal:
+
+<Steps>
+  <Step title="Enable Managed Identity">
+    Enable system-assigned managed identity on your runner VM in Azure Portal.
+  </Step>
+  
+  <Step title="Grant KeyVault Access">
+    Add the managed identity to your KeyVault access policies with appropriate permissions.
+  </Step>
+  
+  <Step title="Configure AL-Go">
+    Add KeyVault name to settings (AZURE_CREDENTIALS not needed when using Managed Identity):
+
+    ```json
+    {
+      "keyVaultName": "<your-keyvault-name>",
+      "useAzureManagedIdentity": true
+    }
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Authentication failed to KeyVault">
+    Verify:
+    - Service principal credentials are correct in AZURE_CREDENTIALS
+    - Service principal has access policy in KeyVault
+    - KeyVault name is correct
+    - Tenant ID and subscription ID are correct
+  </Accordion>
+  
+  <Accordion title="Secret not found in KeyVault">
+    Check:
+    - Secret name exactly matches what AL-Go expects (case-sensitive)
+    - Secret exists in the specified KeyVault
+    - Access policy grants "Get" permission for secrets
+  </Accordion>
+  
+  <Accordion title="Network connectivity issues">
+    Investigate:
+    - KeyVault firewall settings
+    - GitHub Actions IP ranges if using firewall restrictions
+    - Self-hosted runner network connectivity to Azure
+  </Accordion>
+  
+  <Accordion title="Workflow uses GitHub secret instead of KeyVault">
+    Remember:
+    - GitHub secrets take precedence over KeyVault
+    - Remove GitHub secrets after confirming KeyVault works
+    - Environment secrets override repository secrets
+  </Accordion>
+</AccordionGroup>
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Use Least Privilege">
+    Grant only necessary permissions:
+    - KeyVault: Only "Get" and "List" for secrets
+    - Service principal: Only KeyVault access, no broader permissions
+  </Step>
+  
+  <Step title="Rotate Secrets Regularly">
+    Implement secret rotation:
+    - Set expiration dates on client secrets
+    - Rotate service principal credentials periodically
+    - Update KeyVault secrets when rotating credentials
+  </Step>
+  
+  <Step title="Enable Audit Logging">
+    Monitor KeyVault access:
+    - Enable Azure Monitor for KeyVault
+    - Review access logs regularly
+    - Set up alerts for suspicious activity
+  </Step>
+  
+  <Step title="Use Premium SKU for HSM">
+    For sensitive workloads:
+    - Use Premium KeyVault with HSM support
+    - Store encryption keys in HSM-backed keys
+    - Implement key versioning
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Enable Telemetry" icon="chart-line" href="/advanced/telemetry">
+    Monitor KeyVault access and workflow performance
+  </Card>
+  <Card title="Self-Hosted Runners" icon="server" href="/advanced/self-hosted-runners">
+    Use managed identity with Azure-hosted runners
+  </Card>
+</CardGroup>

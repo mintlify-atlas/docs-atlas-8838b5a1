@@ -1,0 +1,193 @@
+---
+title: Migrate Existing PTE Project
+description: Set up CI/CD for an existing per-tenant extension using AL-Go for GitHub
+---
+
+This guide shows you how to add AL-Go for GitHub CI/CD to an existing per-tenant extension project. We'll use the BingMaps sample app as an example.
+
+## Prerequisites
+
+Before you begin:
+
+- A GitHub account
+- An existing PTE app (source code as a `.zip` file or direct download URL)
+- Familiarity with AL-Go for GitHub basics
+
+<Note>
+  This example uses the BingMaps PTE sample app from [https://github.com/microsoft/bcsamples-bingmaps.pte](https://github.com/microsoft/bcsamples-bingmaps.pte), but you can follow the same steps with your own app.
+</Note>
+
+## Prepare Your App
+
+<Steps>
+  <Step title="Locate your app artifact">
+    You need either:
+    - A direct download URL to a `.zip` file containing your app source code
+    - The ability to upload your app to a temporary storage location
+
+    For the BingMaps example, navigate to [https://github.com/microsoft/bcsamples-bingmaps.pte/releases](https://github.com/microsoft/bcsamples-bingmaps.pte/releases) and copy the URL to the **bcsamples-bingmaps.pte-main-Apps** artifact from the latest release.
+  </Step>
+</Steps>
+
+## Set Up the AL-Go Repository
+
+<Steps>
+  <Step title="Create repository from template">
+    1. Navigate to [https://github.com/microsoft/AL-Go-PTE](https://github.com/microsoft/AL-Go-PTE)
+    2. Click **Use this template**
+    3. Enter a repository name (e.g., `app2`)
+    4. Click **Create Repository from template**
+  </Step>
+
+  <Step title="Run the Add existing app workflow">
+    1. Go to **Actions** in your new repository
+    2. Select the **Add existing app or test app** workflow
+    3. Click **Run workflow**
+  </Step>
+
+  <Step title="Provide the download URL">
+    In the **Direct Download URL** field, paste the direct download URL to your app's `.zip` file and click **Run workflow**.
+
+    <Note>
+      The URL must be a direct download link that returns the `.zip` file when accessed. Sharing links from cloud storage services need to be converted to direct download URLs.
+    </Note>
+  </Step>
+
+  <Step title="Review the pull request">
+    When the workflow completes:
+    1. Navigate to **Pull requests**
+    2. Review the pull request created by the workflow
+    3. Examine the changes to ensure your app was imported correctly
+  </Step>
+
+  <Step title="Merge the pull request">
+    Click **Merge pull request** to add your app to the repository.
+
+    This will automatically trigger the **CI/CD** workflow.
+  </Step>
+</Steps>
+
+## Verify the CI/CD Pipeline
+
+<Steps>
+  <Step title="Monitor the CI/CD workflow">
+    1. Go to the **Actions** tab
+    2. Click on the running CI/CD workflow
+    3. Monitor the build progress
+  </Step>
+
+  <Step title="Review build results">
+    After the workflow completes successfully:
+    - Check the build summary for artifact information
+    - Verify that your app compiled without errors
+    - Download build artifacts if needed
+  </Step>
+
+  <Step title="Inspect build details">
+    For detailed build information:
+    1. Select the **build** job
+    2. Expand the **Run Pipeline** section
+    3. Review the **Compiling apps** subsection
+  </Step>
+</Steps>
+
+## Common Scenarios After Import
+
+Once your app is imported and building successfully, you may want to:
+
+### Add Dependencies
+
+If your app depends on other apps not included in the base Business Central artifacts:
+
+```json
+{
+  "appDependencyProbingPaths": [
+    {
+      "repo": "owner/repository",
+      "version": "latest",
+      "release_status": "release",
+      "projects": "*"
+    }
+  ]
+}
+```
+
+See the [Settings documentation](/setup/settings#appdependencyprobingpaths) for more details.
+
+### Configure Multiple Apps
+
+If your repository contains multiple apps, specify the folder structure:
+
+```json
+{
+  "appFolders": ["App1", "App2"],
+  "testFolders": ["App1.Test", "App2.Test"]
+}
+```
+
+### Set Target Country
+
+If your app targets a specific localization:
+
+```json
+{
+  "country": "w1"
+}
+```
+
+Replace `w1` with your target country code (`us`, `dk`, `de`, etc.).
+
+## Next Steps
+
+With CI/CD configured, you can now:
+
+<CardGroup cols={2}>
+  <Card title="Register Sandbox Environment" icon="flask" href="/workflows/environments">
+    Set up a sandbox environment for automated deployment
+  </Card>
+  <Card title="Create a Release" icon="tag" href="/workflows/create-release">
+    Create versioned releases of your app
+  </Card>
+  <Card title="Register Production Environment" icon="building" href="/workflows/environments">
+    Configure production environment deployment
+  </Card>
+  <Card title="Configure Settings" icon="gear" href="/setup/settings">
+    Customize build and deployment settings
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Build Fails with Missing Dependencies
+
+If your build fails due to missing dependencies:
+
+1. Check the error message for the missing app name
+2. Add the dependency to `appDependencyProbingPaths` or `installApps` settings
+3. Commit the changes to trigger a new build
+
+### Authentication Issues
+
+If you see authentication errors during workflows:
+
+1. Ensure all required secrets are configured
+2. Verify secret names match the settings indirection (if used)
+3. Check that secrets haven't expired
+
+See the [Secrets documentation](/setup/secrets) for authentication setup.
+
+### Code Analysis Warnings
+
+To enable or adjust code analysis:
+
+```json
+{
+  "enableCodeCop": true,
+  "enableUICop": true,
+  "failOn": "error"
+}
+```
+
+<Warning>
+  Setting `failOn` to `warning` will cause builds to fail on any warnings. Use `error` (default) for most scenarios.
+</Warning>

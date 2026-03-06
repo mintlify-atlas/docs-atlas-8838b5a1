@@ -1,0 +1,110 @@
+---
+title: Build Reference Documentation
+description: Generate reference documentation for AL-Go applications using ALDoc
+---
+
+The Build Reference Documentation action generates comprehensive reference documentation for your Business Central AL applications using the ALDoc tool. It processes built artifacts to create documentation that can be published to GitHub Pages or other documentation platforms.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/BuildReferenceDocumentation@v5.0
+  with:
+    artifacts: '.artifacts'
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action
+</ParamField>
+
+<ParamField path="artifacts" type="string" required>
+  The artifacts to build documentation for or a folder in which the artifacts have been downloaded
+  
+  This should point to a folder containing compiled Business Central app files (.app).
+</ParamField>
+
+<ParamField path="artifactUrl" type="string" default="">
+  The URL of the BC artifact to download which includes AlDoc
+  
+  If not specified, the action will use the default Business Central artifact that includes the ALDoc tool.
+</ParamField>
+
+## Example Workflows
+
+### Basic Documentation Generation
+
+```yaml
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .artifacts
+      
+      - name: Build Reference Documentation
+        uses: microsoft/AL-Go/Actions/BuildReferenceDocumentation@v5.0
+        with:
+          artifacts: '.artifacts'
+```
+
+### With Custom BC Artifact
+
+```yaml
+- name: Build Reference Documentation
+  uses: microsoft/AL-Go/Actions/BuildReferenceDocumentation@v5.0
+  with:
+    artifacts: '.artifacts'
+    artifactUrl: 'https://bcartifacts.azureedge.net/onprem/24.0.16410.17763/w1'
+```
+
+### Generate and Deploy to GitHub Pages
+
+```yaml
+jobs:
+  build-and-deploy-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .artifacts
+      
+      - name: Build Reference Documentation
+        uses: microsoft/AL-Go/Actions/BuildReferenceDocumentation@v5.0
+        with:
+          artifacts: '.artifacts'
+      
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.aldoc'
+      
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+```
+
+<Note>
+  The generated documentation is typically placed in the `.aldoc` folder and includes HTML files with detailed API references for your AL objects.
+</Note>
+
+<Warning>
+  Ensure your artifacts folder contains valid compiled Business Central app files (.app) before running this action.
+</Warning>

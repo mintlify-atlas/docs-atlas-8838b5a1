@@ -1,0 +1,223 @@
+---
+title: Read Settings
+description: Read and process AL-Go settings for workflows
+---
+
+# Read Settings
+
+The Read Settings action loads and processes configuration settings from AL-Go settings files. It consolidates repository-level and project-level settings into environment variables and outputs that can be used by subsequent workflow steps.
+
+## Overview
+
+This action is typically one of the first steps in any AL-Go workflow. It:
+
+- Reads settings from `.AL-Go/settings.json` and project-specific settings files
+- Merges repository and project settings with appropriate precedence
+- Exposes settings as environment variables for easy access
+- Provides specific outputs like runner configuration
+- Supports selective setting retrieval through the `get` parameter
+
+<Note>
+The Read Settings action creates a compressed JSON structure containing ALL settings in the `env.Settings` variable, regardless of the `get` parameter. The `get` parameter only controls which individual environment variables are created.
+</Note>
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  The shell in which to run the PowerShell script. Options:
+  - `powershell` - Windows PowerShell 5.1
+  - `pwsh` - PowerShell 7+
+</ParamField>
+
+<ParamField path="project" type="string" default=".">
+  Project folder path for multi-project repositories. When set to `.` (default), only repository-level settings are loaded. Specify a project path to load both repository and project-specific settings.
+</ParamField>
+
+<ParamField path="buildMode" type="string" default="Default">
+  Build mode identifier. This parameter is typically only set when called from the internal `_BuildALGoProject` workflow. The build mode can affect which settings are loaded and how they're processed.
+</ParamField>
+
+<ParamField path="workflowName" type="string" default="${{ github.workflow }}">
+  The name of the workflow for which settings are being read. This allows for workflow-specific settings overrides.
+</ParamField>
+
+<ParamField path="get" type="string" default="">
+  Comma-separated list of specific settings to retrieve as individual environment variables. If empty, no individual environment variables are created (but `env.Settings` still contains all settings).
+  
+  Example: `"type,runs-on,shell,artifact"`
+</ParamField>
+
+## Outputs
+
+The action provides both environment variables and output variables:
+
+### Output Variables
+
+<ParamField path="GitHubRunnerJson" type="string">
+  GitHub runner configuration in compressed JSON format. This output contains the runner specifications that should be used for workflow jobs.
+</ParamField>
+
+<ParamField path="GitHubRunnerShell" type="string">
+  The shell that should be used for GitHub runner jobs. This is extracted from the settings and provided as a convenient output.
+</ParamField>
+
+### Environment Variables
+
+<ParamField path="Settings" type="string">
+  A compressed JSON structure containing ALL AL-Go settings. This includes both repository-level and project-level settings (if a project was specified). This variable is available regardless of the `get` parameter value.
+  
+  The settings structure includes configuration for:
+  - Build artifacts and versions
+  - Runner specifications
+  - Project type and structure
+  - Build modes and options
+  - And all other AL-Go configuration
+</ParamField>
+
+**Individual Setting Variables**: For each setting name specified in the `get` parameter, an individual environment variable is created. For example, if `get` is `"type,runs-on"`, then `env.type` and `env.runs-on` will be available.
+
+## Usage Example
+
+### Basic Usage
+
+```yaml
+- name: Read settings
+  uses: microsoft/AL-Go/Actions/ReadSettings@main
+  with:
+    shell: pwsh
+```
+
+### Reading Specific Settings
+
+```yaml
+- name: Read settings
+  id: settings
+  uses: microsoft/AL-Go/Actions/ReadSettings@main
+  with:
+    shell: pwsh
+    get: 'type,artifact,runs-on'
+
+- name: Use settings
+  run: |
+    echo "Project type: ${{ env.type }}"
+    echo "Artifact: ${{ env.artifact }}"
+    echo "Runner: ${{ steps.settings.outputs.GitHubRunnerJson }}"
+```
+
+### Multi-Project Repository
+
+```yaml
+- name: Read project settings
+  uses: microsoft/AL-Go/Actions/ReadSettings@main
+  with:
+    shell: pwsh
+    project: 'projects/MyApp'
+    get: 'version,appId'
+```
+
+### Using Runner Outputs
+
+```yaml
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.settings.outputs.GitHubRunnerJson }}
+      shell: ${{ steps.settings.outputs.GitHubRunnerShell }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Read settings
+        id: settings
+        uses: microsoft/AL-Go/Actions/ReadSettings@main
+  
+  build:
+    needs: setup
+    runs-on: ${{ fromJson(needs.setup.outputs.runner) }}
+    defaults:
+      run:
+        shell: ${{ needs.setup.outputs.shell }}
+    steps:
+      - name: Build
+        run: echo "Building with configured runner and shell"
+```
+
+## Settings Files
+
+The Read Settings action processes settings from multiple sources with the following precedence (highest to lowest):
+
+1. **Project settings**: `.AL-Go/<ProjectName>/.settings.json` (if project specified)
+2. **Repository settings**: `.AL-Go/settings.json`
+3. **Default settings**: Built-in defaults from AL-Go
+
+### Common Settings
+
+Here are some commonly used settings:
+
+- `type` - Repository type (PTE, AppSource App, etc.)
+- `artifact` - Business Central artifact URL or version
+- `runs-on` - GitHub runner specification
+- `shell` - Default shell for PowerShell scripts
+- `appFolders` - Array of application folders
+- `testFolders` - Array of test app folders
+- `versioningStrategy` - Version numbering strategy
+- `keyVaultName` - Azure Key Vault name (if using)
+
+<Warning>
+When working with multi-project repositories, always specify the `project` parameter to ensure project-specific settings are loaded. Without it, only repository-level settings will be available.
+</Warning>
+
+## Advanced Usage
+
+### Accessing Settings in PowerShell
+
+```yaml
+- name: Process settings
+  shell: pwsh
+  run: |
+    $settings = '${{ env.Settings }}' | ConvertFrom-Json
+    Write-Host "Project type: $($settings.type)"
+    Write-Host "Apps: $($settings.appFolders -join ', ')"
+```
+
+### Conditional Settings
+
+```yaml
+- name: Read settings
+  uses: microsoft/AL-Go/Actions/ReadSettings@main
+  with:
+    workflowName: ${{ github.workflow }}
+    get: 'artifact'
+
+- name: Use artifact if specified
+  if: env.artifact != ''
+  run: echo "Using artifact: ${{ env.artifact }}"
+```
+
+## Troubleshooting
+
+### Settings Not Found
+
+If settings are not being loaded:
+- Verify `.AL-Go/settings.json` exists in your repository
+- Check JSON syntax for errors
+- Ensure file permissions allow reading
+
+### Missing Project Settings
+
+For project-specific settings:
+- Verify the project path is correct
+- Ensure `.AL-Go/<ProjectName>/.settings.json` exists
+- Check that the project folder structure matches AL-Go expectations
+
+### Environment Variables Not Set
+
+If individual setting variables aren't available:
+- Verify you've specified the setting name in the `get` parameter
+- Check for typos in setting names
+- Remember that `env.Settings` always contains all settings as JSON
+
+## Related Actions
+
+- [Run Pipeline](/actions/run-pipeline) - Uses settings from this action
+- [Read Secrets](/actions/read-secrets) - Also requires settings to be loaded

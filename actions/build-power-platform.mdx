@@ -1,0 +1,140 @@
+---
+title: Build Power Platform
+description: Build Power Platform solutions for AL-Go projects
+---
+
+The Build Power Platform action builds Power Platform solutions from unpacked source files, creating managed or unmanaged solution packages that can be deployed to Power Platform environments.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/BuildPowerPlatform@v5.0
+  with:
+    solutionFolder: 'PowerPlatformSolution'
+    outputFolder: '.artifacts'
+    outputFileName: 'MySolution'
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="solutionFolder" type="string" required>
+  The Power Platform solution path
+  
+  This should point to the folder containing the unpacked Power Platform solution files.
+</ParamField>
+
+<ParamField path="outputFolder" type="string" required>
+  Output folder where the zip file will be placed
+  
+  The built solution package will be created in this directory.
+</ParamField>
+
+<ParamField path="outputFileName" type="string" required>
+  The name of the output zip file (without .zip extension)
+</ParamField>
+
+<ParamField path="companyId" type="string" default="">
+  The Business Central company ID
+  
+  Used when the Power Platform solution integrates with Business Central.
+</ParamField>
+
+<ParamField path="environmentName" type="string" default="">
+  The Business Central environment name
+  
+  Used when the Power Platform solution integrates with Business Central.
+</ParamField>
+
+<ParamField path="appBuild" type="string" default="">
+  The app build number
+  
+  Sets the build portion of the solution version number.
+</ParamField>
+
+<ParamField path="appRevision" type="string" default="">
+  The app revision number
+  
+  Sets the revision portion of the solution version number.
+</ParamField>
+
+## Example Workflows
+
+### Basic Solution Build
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Power Platform Solution
+        uses: microsoft/AL-Go/Actions/BuildPowerPlatform@v5.0
+        with:
+          solutionFolder: 'src/PowerPlatformSolution'
+          outputFolder: '.artifacts'
+          outputFileName: 'MySolution'
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-platform-solution
+          path: .artifacts/MySolution.zip
+```
+
+### Build with Business Central Integration
+
+```yaml
+- name: Build Power Platform Solution with BC Integration
+  uses: microsoft/AL-Go/Actions/BuildPowerPlatform@v5.0
+  with:
+    solutionFolder: 'src/PowerPlatformSolution'
+    outputFolder: '.artifacts'
+    outputFileName: 'MySolution'
+    companyId: ${{ secrets.BC_COMPANY_ID }}
+    environmentName: 'Production'
+```
+
+### Build with Version Numbers
+
+```yaml
+- name: Build Power Platform Solution with Version
+  uses: microsoft/AL-Go/Actions/BuildPowerPlatform@v5.0
+  with:
+    solutionFolder: 'src/PowerPlatformSolution'
+    outputFolder: '.artifacts'
+    outputFileName: 'MySolution'
+    appBuild: ${{ github.run_number }}
+    appRevision: '0'
+```
+
+### Multi-Solution Build
+
+```yaml
+strategy:
+  matrix:
+    solution:
+      - name: 'Solution1'
+        folder: 'src/Solution1'
+      - name: 'Solution2'
+        folder: 'src/Solution2'
+steps:
+  - name: Build ${{ matrix.solution.name }}
+    uses: microsoft/AL-Go/Actions/BuildPowerPlatform@v5.0
+    with:
+      solutionFolder: ${{ matrix.solution.folder }}
+      outputFolder: '.artifacts'
+      outputFileName: ${{ matrix.solution.name }}
+```
+
+<Note>
+  This action automatically installs the Power Platform tools and handles canvas app processing during the build.
+</Note>
+
+<Warning>
+  The action performs a test pack as a workaround for a known issue in the Power Platform VS Code extension. This temporary file is automatically removed.
+</Warning>

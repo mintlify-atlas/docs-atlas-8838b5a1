@@ -1,0 +1,131 @@
+---
+title: "Introduction"
+description: "A plug-and-play DevOps solution for Business Central AL development on GitHub"
+---
+
+# Welcome to AL-Go for GitHub
+
+AL-Go for GitHub is a set of GitHub templates and actions that enable professional DevOps processes for your Business Central AL projects. It provides automated CI/CD pipelines, testing, deployment, and release management — all powered by GitHub Actions.
+
+<Note>
+AL-Go for GitHub is maintained by Microsoft and is designed to keep your repositories current with the latest Business Central features and DevOps best practices through automated updates.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Automated CI/CD" icon="gears">
+    Build, test, and validate your AL apps automatically on every commit and pull request
+  </Card>
+  <Card title="Multi-Project Support" icon="folder-tree">
+    Manage multiple projects and apps within a single repository with independent build pipelines
+  </Card>
+  <Card title="AppSource Publishing" icon="store">
+    Streamlined workflows for publishing apps to Microsoft AppSource with automated validation
+  </Card>
+  <Card title="Continuous Deployment" icon="rocket">
+    Deploy to sandbox and production Business Central environments with S2S authentication
+  </Card>
+  <Card title="Test Automation" icon="vial">
+    Run unit tests, performance tests (BCPT), and page scripting tests automatically
+  </Card>
+  <Card title="Self-Hosted Runners" icon="server">
+    Use your own GitHub runners to improve build performance and control costs
+  </Card>
+  <Card title="Azure KeyVault Integration" icon="key">
+    Secure secrets management with Azure KeyVault support
+  </Card>
+  <Card title="Power Platform Integration" icon="bolt">
+    Build and deploy Power Platform solutions alongside your Business Central apps
+  </Card>
+</CardGroup>
+
+## How It Works
+
+AL-Go for GitHub provides two template repositories to get you started:
+
+<CardGroup cols={2}>
+  <Card title="AL-Go-PTE" icon="building" href="https://github.com/microsoft/AL-Go-PTE">
+    Template for Per Tenant Extensions (PTEs) — customizations for specific customers
+  </Card>
+  <Card title="AL-Go-AppSource" icon="store" href="https://github.com/microsoft/AL-Go-AppSource">
+    Template for AppSource apps — commercial extensions published to Microsoft AppSource
+  </Card>
+</CardGroup>
+
+When you create a repository from one of these templates, you get:
+
+- **Preconfigured workflows** for CI/CD, releases, and deployments
+- **GitHub Actions** that handle building, testing, and publishing
+- **Settings files** to customize behavior for your specific needs
+- **Update mechanisms** to keep your DevOps infrastructure current
+
+## What You Can Do
+
+<Steps>
+  <Step title="Develop">
+    Write AL code in VS Code with online development environments or local containers
+  </Step>
+  <Step title="Test">
+    Run automated unit tests, performance tests, and page scripting tests on every build
+  </Step>
+  <Step title="Release">
+    Create releases with automatically generated release notes and versioned artifacts
+  </Step>
+  <Step title="Deploy">
+    Deploy to sandbox and production environments with automated workflows
+  </Step>
+  <Step title="Publish">
+    Submit to AppSource with built-in validation and continuous delivery
+  </Step>
+</Steps>
+
+## Architecture
+
+AL-Go consists of three main components:
+
+1. **Template Repositories** ([AL-Go-PTE](https://github.com/microsoft/AL-Go-PTE) and [AL-Go-AppSource](https://github.com/microsoft/AL-Go-AppSource)) — Starting points for your projects
+2. **GitHub Actions** ([AL-Go-Actions](https://github.com/microsoft/AL-Go-Actions)) — Reusable actions for build, test, and deployment
+3. **This Repository** ([AL-Go](https://github.com/microsoft/AL-Go)) — Source code for templates and actions
+
+When you use AL-Go:
+- Your repository is created from a template
+- Workflows call actions from AL-Go-Actions
+- Settings files control behavior
+- Update workflows keep everything current
+
+## Getting Started
+
+Ready to set up AL-Go for your project?
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first AL-Go repository in minutes
+  </Card>
+  <Card title="Workshop" icon="graduation-cap" href="/workshop">
+    Complete the interactive AL-Go workshop
+  </Card>
+  <Card title="New PTE Project" icon="building" href="/setup/new-pte-project">
+    Set up a Per Tenant Extension project
+  </Card>
+  <Card title="New AppSource App" icon="store" href="/setup/new-appsource-project">
+    Set up an AppSource app project
+  </Card>
+</CardGroup>
+
+## Community and Support
+
+<CardGroup cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/Microsoft/al-go">
+    View source code, report issues, and contribute
+  </Card>
+  <Card title="Roadmap" icon="map" href="https://aka.ms/ALGoRoadmap">
+    See what's coming next in AL-Go
+  </Card>
+  <Card title="Release Notes" icon="scroll" href="https://github.com/microsoft/AL-Go/blob/main/RELEASENOTES.md">
+    Review changes in each version
+  </Card>
+  <Card title="Contributing" icon="users" href="https://github.com/microsoft/AL-Go/blob/main/Scenarios/Contribute.md">
+    Learn how to contribute to AL-Go
+  </Card>
+</CardGroup>

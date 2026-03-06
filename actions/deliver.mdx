@@ -1,0 +1,100 @@
+---
+title: Deliver
+description: Deliver AL-Go artifacts to AppSource or storage locations
+---
+
+The Deliver action handles delivering built artifacts to various delivery targets such as AppSource or storage locations. It supports both continuous delivery (CD) and release scenarios.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/Deliver@v5.0
+  with:
+    deliveryTarget: 'AppSource'
+    artifacts: '.artifacts'
+    type: 'Release'
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action
+</ParamField>
+
+<ParamField path="projects" type="string" default="*">
+  Projects to deliver (default is all)
+</ParamField>
+
+<ParamField path="deliveryTarget" type="string" required>
+  Delivery target (AppSource or Storage)
+</ParamField>
+
+<ParamField path="artifacts" type="string" required>
+  The artifacts to deliver or a folder in which the artifacts have been downloaded
+</ParamField>
+
+<ParamField path="type" type="string" default="CD">
+  Type of delivery (CD or Release)
+</ParamField>
+
+<ParamField path="atypes" type="string" default="Apps,Dependencies,TestApps">
+  Types of artifacts to deliver. Comma-separated list that can include:
+  - `Apps` - Application files
+  - `Dependencies` - Dependency app files
+  - `TestApps` - Test application files
+</ParamField>
+
+<ParamField path="goLive" type="boolean" default="false">
+  Promote AppSource App to Go Live?
+</ParamField>
+
+## Example Workflows
+
+### Deliver to AppSource
+
+```yaml
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: .artifacts
+      
+      - name: Deliver to AppSource
+        uses: microsoft/AL-Go/Actions/Deliver@v5.0
+        with:
+          deliveryTarget: 'AppSource'
+          artifacts: '.artifacts'
+          type: 'Release'
+          atypes: 'Apps'
+          goLive: 'true'
+```
+
+### Deliver to Storage
+
+```yaml
+- name: Deliver to Storage
+  uses: microsoft/AL-Go/Actions/Deliver@v5.0
+  with:
+    deliveryTarget: 'Storage'
+    artifacts: '.artifacts'
+    type: 'CD'
+    projects: 'MyApp,MyOtherApp'
+```
+
+<Note>
+  Use the `projects` parameter to specify specific projects to deliver, or use `*` to deliver all projects.
+</Note>
+
+<Warning>
+  When setting `goLive` to `true`, ensure your app meets all AppSource certification requirements.
+</Warning>

@@ -1,0 +1,475 @@
+---
+title: Create Release
+description: Create versioned releases of your Business Central applications with AL-Go for GitHub
+---
+
+The Create Release workflow packages your Business Central applications into versioned releases, complete with release notes, artifacts, and optional version number updates.
+
+## Overview
+
+This workflow creates a GitHub release from a successful build, allowing you to:
+- **Tag specific versions** of your applications
+- **Generate release notes** automatically from commits
+- **Publish artifacts** to the release
+- **Create release branches** for hotfix support
+- **Update version numbers** in the main branch
+- **Deliver to external targets** (NuGet, Storage)
+
+## Triggering the Workflow
+
+The Create Release workflow must be triggered manually.
+
+<Steps>
+  <Step title="Navigate to Actions">
+    Go to your repository on GitHub and click the **Actions** tab.
+  </Step>
+
+  <Step title="Select Create Release">
+    Click on **Create release** in the workflows list.
+  </Step>
+
+  <Step title="Run Workflow">
+    Click **Run workflow** and fill in the required parameters.
+  </Step>
+</Steps>
+
+## Workflow Parameters
+
+### Required Parameters
+
+<ParamField path="name" type="string" required>
+  **Name of this release**
+  
+  The display name for the release (e.g., "Version 1.0", "Spring 2024 Release").
+  
+  Example: `v1.0`
+</ParamField>
+
+<ParamField path="tag" type="string" required>
+  **Tag of this release**
+  
+  Must be a semantic version string following [semver.org](https://semver.org) (e.g., `1.0.0`, `2.1.3-beta`).
+  
+  Example: `1.0.0`
+</ParamField>
+
+### Optional Parameters
+
+<ParamField path="buildVersion" type="string" default="latest">
+  **Build version to promote**
+  
+  Which build to promote to a release:
+  - `latest`: Most recent successful build
+  - `1234`: Specific workflow run ID
+  - Version number from a previous release
+  
+  Example: `latest`
+</ParamField>
+
+<ParamField path="releaseType" type="choice" default="Release">
+  **Release type**
+  
+  Options:
+  - **Release**: Public, production-ready release
+  - **Prerelease**: Beta or preview release
+  - **Draft**: Unpublished draft for review
+  
+  Example: `Release`
+</ParamField>
+
+<ParamField path="createReleaseBranch" type="boolean" default="false">
+  **Create Release Branch?**
+  
+  Creates a branch from the release commit to enable hotfixes.
+  
+  Example: `true`
+</ParamField>
+
+<ParamField path="releaseBranchPrefix" type="string" default="release/">
+  **Release branch prefix**
+  
+  Prefix for the release branch name (e.g., `release/` creates `release/1.0.0`).
+  
+  Example: `release/`
+</ParamField>
+
+<ParamField path="updateVersionNumber" type="string">
+  **New Version Number in main branch**
+  
+  How to update the version after release:
+  - Absolute: `2.0` (sets to version 2.0)
+  - Incremental: `+0.1` (adds 0.1 to current version)
+  - Incremental: `+1` (increments major version)
+  
+  Example: `+0.1`
+</ParamField>
+
+<ParamField path="skipUpdatingDependencies" type="boolean" default="false">
+  **Skip updating dependency version numbers**
+  
+  When true, only updates the version in the main app, not in dependent apps.
+  
+  Example: `false`
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  **Direct Commit?**
+  
+  When true, commits version updates directly to main. When false, creates a pull request.
+  
+  Example: `false`
+</ParamField>
+
+<ParamField path="useGhTokenWorkflow" type="boolean" default="false">
+  **Use GhTokenWorkflow for PR/Commit?**
+  
+  Use the `ghTokenWorkflow` secret instead of the default token. Required for triggering subsequent workflows.
+  
+  Example: `false`
+</ParamField>
+
+## Workflow Jobs
+
+<Steps>
+  <Step title="Create Release">
+    The main job that creates the GitHub release.
+
+    **Actions Performed:**
+    1. Validates workflow inputs (tag format, version numbers)
+    2. Checks for AL-Go system file updates
+    3. Determines which artifacts to include
+    4. Generates release notes from commit history
+    5. Creates the GitHub release
+    6. Tags the commit with the release version
+
+    **Release Notes Generation:**
+    - Includes all commits since the last release
+    - Lists new contributors
+    - Adds link to full changelog
+    - Formatted in Markdown
+
+    <Note>
+      The release is created at the commit specified by the build version, ensuring reproducibility.
+    </Note>
+  </Step>
+
+  <Step title="Upload Artifacts">
+    Downloads and uploads artifacts to the release.
+
+    **Artifact Types:**
+    - **Apps**: Compiled `.app` files
+    - **Test Apps**: Test application packages
+    - **Dependencies**: Dependency app files
+    - **PowerPlatform**: PowerPlatform solution files (if applicable)
+
+    Each artifact is:
+    1. Downloaded from the build workflow run
+    2. Zipped with a descriptive name
+    3. Uploaded to the GitHub release
+
+    **Delivery Targets:**
+    If configured, artifacts are also delivered to:
+    - **NuGet**: As NuGet packages
+    - **Storage**: Azure Blob Storage or similar
+  </Step>
+
+  <Step title="Create Release Branch">
+    Optionally creates a release branch for hotfix support.
+
+    **Branch Creation:**
+    - Branch name: `{releaseBranchPrefix}{releaseVersion}`
+    - Example: `release/1.0.0`
+    - Created from the release commit
+    - Allows hotfix development without affecting main
+
+    <Note>
+      Release branches are useful for maintaining multiple versions simultaneously.
+    </Note>
+  </Step>
+
+  <Step title="Update Version Number">
+    Optionally updates version numbers in the main branch.
+
+    **Version Update Process:**
+    1. Increments version in `app.json` files
+    2. Updates dependencies between apps (unless skipped)
+    3. Either commits directly or creates a pull request
+    4. Uses `IncrementVersionNumber` AL-Go action
+
+    <Warning>
+      It's recommended to update the version number after each release to avoid version conflicts.
+    </Warning>
+  </Step>
+
+  <Step title="Post-Process">
+    Finalizes the workflow and reports telemetry.
+
+    Always runs to ensure cleanup, even if previous jobs fail.
+  </Step>
+</Steps>
+
+## Example: Creating Your First Release
+
+<Steps>
+  <Step title="Prerequisites">
+    Ensure you have:
+    - At least one successful CI/CD build
+    - Proper permissions to create releases
+    - `ghTokenWorkflow` secret (if using pull requests for version updates)
+  </Step>
+
+  <Step title="Run the Workflow">
+    Navigate to **Actions** → **Create release** → **Run workflow**
+
+    Fill in the parameters:
+    - **name**: `v1.0`
+    - **tag**: `1.0.0`
+    - **buildVersion**: `latest`
+    - **releaseType**: `Release`
+    - **updateVersionNumber**: `+0.1`
+  </Step>
+
+  <Step title="Wait for Completion">
+    The workflow will:
+    1. Create the release
+    2. Upload artifacts
+    3. Create a version update PR
+  </Step>
+
+  <Step title="Review and Merge PR">
+    Review the version update pull request and merge it to update the main branch version.
+  </Step>
+</Steps>
+
+<Note>
+  After merging the version update PR, the CI/CD workflow will automatically run and may deploy to environments.
+</Note>
+
+## Release Notes
+
+Release notes are automatically generated and include:
+
+- **Summary**: Description of changes since last release
+- **What's Changed**: List of commits with links
+- **New Contributors**: First-time contributors
+- **Full Changelog**: Link to compare view
+
+### Customizing Release Notes
+
+After the release is created, you can edit it:
+
+1. Go to the **Releases** page
+2. Click **Edit** on your release
+3. Modify the description
+4. Save changes
+
+<Note>
+  Consider adding upgrade notes, breaking changes, and migration guides to release notes.
+</Note>
+
+## Release Artifacts
+
+Each release includes downloadable artifacts:
+
+<CardGroup cols={2}>
+  <Card title="Application Files" icon="cube">
+    **{ProjectName}-Apps-{Tag}.zip**
+    
+    Contains all `.app` files for the release.
+  </Card>
+
+  <Card title="Test Applications" icon="vial">
+    **{ProjectName}-TestApps-{Tag}.zip**
+    
+    Test apps for validation and testing.
+  </Card>
+
+  <Card title="Dependencies" icon="diagram-project">
+    **{ProjectName}-Dependencies-{Tag}.zip**
+    
+    All dependency apps required for installation.
+  </Card>
+
+  <Card title="Source Code" icon="code">
+    **Source code (zip/tar.gz)**
+    
+    Automatically generated by GitHub.
+  </Card>
+</CardGroup>
+
+## Version Number Updates
+
+### Understanding Version Increments
+
+AL-Go supports flexible version number updates:
+
+| Input | Current Version | New Version | Description |
+|-------|----------------|-------------|-------------|
+| `+1` | 1.0.0.0 | 2.0.0.0 | Increment major |
+| `+0.1` | 1.0.0.0 | 1.1.0.0 | Increment minor |
+| `2.0` | 1.0.0.0 | 2.0.0.0 | Set absolute version |
+| `3.5` | 1.2.0.0 | 3.5.0.0 | Set absolute version |
+
+### Version Strategy
+
+Configure versioning strategy in `.github/AL-Go-Settings.json`:
+
+```json
+{
+  "versioningStrategy": 2
+}
+```
+
+**Strategies:**
+- `0`: Major.Minor (e.g., 1.0)
+- `1`: Major.Minor.Build (e.g., 1.0.0)
+- `2`: Major.Minor.Build.Revision (e.g., 1.0.0.0)
+- `3`: Use all four version fields independently
+
+## Delivery Targets
+
+### NuGet Delivery
+
+To deliver releases to NuGet:
+
+1. **Configure NuGet Context Secret**:
+
+   Secret name: `nuGetContext`
+   
+   Secret value:
+   ```json
+   {
+     "serverUrl": "https://api.nuget.org/v3/index.json",
+     "token": "your-nuget-api-key"
+   }
+   ```
+
+2. **Artifacts are automatically** packaged as NuGet packages and pushed
+
+### Storage Delivery
+
+To deliver releases to Azure Storage:
+
+1. **Configure Storage Context Secret**:
+
+   Secret name: `storageContext`
+   
+   Secret value:
+   ```json
+   {
+     "storageAccountName": "mystorageaccount",
+     "containerName": "releases",
+     "sasToken": "your-sas-token"
+   }
+   ```
+
+2. **Artifacts are uploaded** to the specified container
+
+## Release Branches and Hotfixes
+
+Release branches enable hotfix workflows:
+
+<Steps>
+  <Step title="Create Release with Branch">
+    When creating a release, check **Create Release Branch?**
+  </Step>
+
+  <Step title="Develop Hotfix">
+    Create a hotfix branch from the release branch:
+    ```bash
+    git checkout release/1.0.0
+    git checkout -b hotfix/1.0.1
+    ```
+  </Step>
+
+  <Step title="Create Hotfix Release">
+    Run Create Release again:
+    - **buildVersion**: Use the hotfix build
+    - **tag**: `1.0.1`
+    - **name**: `v1.0.1 Hotfix`
+  </Step>
+
+  <Step title="Merge Back">
+    Merge the hotfix back to main and the release branch.
+  </Step>
+</Steps>
+
+## Required Secrets
+
+<CardGroup cols={2}>
+  <Card title="TokenForPush" icon="key">
+    **Purpose**: Create releases and push tags
+    
+    **Type**: Personal Access Token with `repo` scope
+    
+    Used for creating GitHub releases.
+  </Card>
+
+  <Card title="ghTokenWorkflow" icon="arrow-right-arrow-left">
+    **Purpose**: Trigger subsequent workflows
+    
+    **Type**: Personal Access Token with `workflow` scope
+    
+    Required when `useGhTokenWorkflow` is true.
+  </Card>
+
+  <Card title="nuGetContext" icon="box">
+    **Purpose**: Deliver to NuGet
+    
+    **Type**: JSON with NuGet server URL and API key
+    
+    Optional, for NuGet delivery.
+  </Card>
+
+  <Card title="storageContext" icon="database">
+    **Purpose**: Deliver to Storage
+    
+    **Type**: JSON with storage account details
+    
+    Optional, for Storage delivery.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<CardGroup cols={2}>
+  <Card title="Tag Already Exists" icon="tags">
+    Choose a different tag name. Git tags must be unique. Delete the old tag if necessary.
+  </Card>
+
+  <Card title="No Artifacts Found" icon="box-open">
+    Ensure the build version exists and completed successfully. Check the workflow runs.
+  </Card>
+
+  <Card title="Version Update Fails" icon="code-branch">
+    Verify the version number format. Use `+0.1` for incremental or `2.0` for absolute versions.
+  </Card>
+
+  <Card title="PR Not Created" icon="code-pull-request">
+    Ensure `ghTokenWorkflow` secret is configured. The default token cannot trigger workflows.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Use Semantic Versioning">
+    Follow [semver.org](https://semver.org) for version tags: `MAJOR.MINOR.PATCH`
+  </Step>
+
+  <Step title="Always Update Version">
+    After each release, increment the version in main to avoid conflicts.
+  </Step>
+
+  <Step title="Create Release Branches for Production">
+    Enable hotfix support by creating release branches for production releases.
+  </Step>
+
+  <Step title="Use Prereleases for Testing">
+    Mark releases as "Prerelease" during testing phases.
+  </Step>
+
+  <Step title="Document Breaking Changes">
+    Edit release notes to highlight breaking changes and migration steps.
+  </Step>
+</Steps>

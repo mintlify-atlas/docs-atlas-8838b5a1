@@ -1,0 +1,108 @@
+---
+title: Determine Deployment Environments
+description: Identify and configure deployment environments for AL-Go workflows
+---
+
+The Determine Deployment Environments action analyzes your repository configuration and determines which environments should be used for deployment. It returns a matrix of environments and their settings for use in deployment workflows.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/DetermineDeploymentEnvironments@v5.0
+  id: determine
+  with:
+    getEnvironments: '*'
+    type: 'CD'
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="getEnvironments" type="string" required>
+  Specifies the pattern of the environments you want to retrieve
+  - Use `*` for all environments
+  - Use specific environment names or patterns
+</ParamField>
+
+<ParamField path="type" type="string" required>
+  Type of deployment:
+  - `CD` - Continuous deployment
+  - `Publish` - Publishing deployment
+  - `All` - All deployment types
+</ParamField>
+
+<ParamField path="createEnvIfNotExists" type="boolean" default="false">
+  If true, allow deploying to environments that do not exist (will create a new GitHub environment)
+</ParamField>
+
+## Outputs
+
+<ParamField path="EnvironmentsMatrixJson" type="string">
+  The Environment matrix to use for the Deploy step in compressed JSON format
+</ParamField>
+
+<ParamField path="DeploymentEnvironmentsJson" type="string">
+  Deployment Environments with settings in compressed JSON format
+</ParamField>
+
+<ParamField path="EnvironmentCount" type="number">
+  Number of Deployment Environments found
+</ParamField>
+
+<ParamField path="UnknownEnvironment" type="boolean">
+  Flag determining whether the environment is unknown
+</ParamField>
+
+<ParamField path="GenerateALDocArtifact" type="boolean">
+  Flag determining whether to generate the ALDoc artifact
+</ParamField>
+
+<ParamField path="DeployALDocArtifact" type="boolean">
+  Flag determining whether to deploy the ALDoc artifact to GitHub Pages
+</ParamField>
+
+## Example Workflow
+
+```yaml
+jobs:
+  determine:
+    runs-on: ubuntu-latest
+    outputs:
+      environmentsMatrixJson: ${{ steps.determine.outputs.EnvironmentsMatrixJson }}
+      deploymentEnvironmentsJson: ${{ steps.determine.outputs.DeploymentEnvironmentsJson }}
+      environmentCount: ${{ steps.determine.outputs.EnvironmentCount }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine Deployment Environments
+        id: determine
+        uses: microsoft/AL-Go/Actions/DetermineDeploymentEnvironments@v5.0
+        with:
+          getEnvironments: '*'
+          type: 'CD'
+          createEnvIfNotExists: 'false'
+  
+  deploy:
+    needs: determine
+    if: needs.determine.outputs.environmentCount > 0
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.determine.outputs.environmentsMatrixJson) }}
+    steps:
+      - name: Deploy to ${{ matrix.environment }}
+        uses: microsoft/AL-Go/Actions/Deploy@v5.0
+        with:
+          environmentName: ${{ matrix.environment }}
+          deploymentEnvironmentsJson: ${{ needs.determine.outputs.deploymentEnvironmentsJson }}
+```
+
+<Note>
+  This action is typically used at the beginning of a deployment workflow to determine which environments need to be deployed to.
+</Note>
+
+<Warning>
+  When `createEnvIfNotExists` is set to `true`, new GitHub environments will be created automatically. Ensure this aligns with your security and governance policies.
+</Warning>

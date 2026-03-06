@@ -1,0 +1,129 @@
+---
+title: Calculate Artifact Names
+description: Calculate standardized artifact names for AL-Go workflows
+---
+
+The **Calculate Artifact Names** action generates standardized names for various build artifacts produced during AL-Go workflows.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/CalculateArtifactNames@main
+  id: artifactNames
+  with:
+    project: 'MyProject'
+    buildMode: 'Default'
+```
+
+## Inputs
+
+<ParamField path="project" type="string" required>
+  Name of the built project.
+</ParamField>
+
+<ParamField path="buildMode" type="string" required>
+  Build mode used when building the artifacts (e.g., `Default`, `Clean`, `Translated`).
+</ParamField>
+
+<ParamField path="suffix" type="string" default="">
+  Suffix to add to the artifact names (e.g., for versioning or environment differentiation).
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action. Options: `powershell` or `pwsh`.
+</ParamField>
+
+## Outputs
+
+<ParamField path="AppsArtifactsName" type="string">
+  Artifact name for compiled apps (.app files).
+</ParamField>
+
+<ParamField path="PowerPlatformSolutionArtifactsName" type="string">
+  Artifact name for Power Platform solutions.
+</ParamField>
+
+<ParamField path="DependenciesArtifactsName" type="string">
+  Artifact name for app dependencies.
+</ParamField>
+
+<ParamField path="TestAppsArtifactsName" type="string">
+  Artifact name for test apps.
+</ParamField>
+
+<ParamField path="TestResultsArtifactsName" type="string">
+  Artifact name for test results.
+</ParamField>
+
+<ParamField path="BcptTestResultsArtifactsName" type="string">
+  Artifact name for BCPT (Business Central Performance Toolkit) test results.
+</ParamField>
+
+<ParamField path="PageScriptingTestResultsArtifactsName" type="string">
+  Artifact name for page scripting test results.
+</ParamField>
+
+<ParamField path="PageScriptingTestResultDetailsArtifactsName" type="string">
+  Artifact name for detailed page scripting test results.
+</ParamField>
+
+<ParamField path="BuildOutputArtifactsName" type="string">
+  Artifact name for build output logs and files.
+</ParamField>
+
+<ParamField path="ContainerEventLogArtifactsName" type="string">
+  Artifact name for container event logs.
+</ParamField>
+
+<ParamField path="ErrorLogsArtifactsName" type="string">
+  Artifact name for error logs.
+</ParamField>
+
+<ParamField path="BuildMode" type="string">
+  Build mode used when building the artifacts (echoed from input).
+</ParamField>
+
+## Example
+
+Calculate artifact names and use them in upload steps:
+
+```yaml
+name: Build and Upload Artifacts
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Calculate Artifact Names
+        uses: microsoft/AL-Go/Actions/CalculateArtifactNames@main
+        id: artifactNames
+        with:
+          project: 'MyProject'
+          buildMode: 'Default'
+          suffix: '-v1.0'
+      
+      - name: Upload Apps
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifactNames.outputs.AppsArtifactsName }}
+          path: output/*.app
+      
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifactNames.outputs.TestResultsArtifactsName }}
+          path: testresults/*.xml
+```
+
+<Note>
+  This action ensures consistent artifact naming across your workflows, making it easier to identify and download artifacts from different builds.
+</Note>
+
+<Warning>
+  The artifact names are generated based on the project name, build mode, and suffix. Ensure these inputs are consistent across your workflow to maintain artifact naming consistency.
+</Warning>

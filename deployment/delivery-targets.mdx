@@ -1,0 +1,585 @@
+---
+title: Delivery Targets
+description: Configure continuous delivery to NuGet feeds, GitHub Packages, and other distribution channels in AL-Go for GitHub
+---
+
+Delivery Targets in AL-Go for GitHub enable you to automatically publish your Business Central applications to various package repositories and storage systems. This facilitates app distribution, dependency management, and partner collaboration.
+
+## Overview
+
+AL-Go supports delivery to multiple target types:
+
+<CardGroup cols={2}>
+  <Card title="GitHub Packages" icon="github">
+    Free NuGet feed provided by GitHub for each organization. Ideal for internal distribution and dependency management.
+  </Card>
+
+  <Card title="Custom NuGet Feeds" icon="box">
+    Azure DevOps Artifacts, private NuGet servers, or other custom NuGet v3 feeds.
+  </Card>
+
+  <Card title="Azure Storage" icon="cloud">
+    Publish artifacts to Azure Storage accounts for archival or custom distribution workflows.
+  </Card>
+
+  <Card title="Microsoft AppSource" icon="store">
+    Submit applications to Microsoft AppSource for public distribution.
+  </Card>
+</CardGroup>
+
+<Note>
+NuGet and GitHub Packages delivery is currently **experimental**. While stable and used in production, the package structure and configuration may change in future versions.
+</Note>
+
+## Delivery Targets Concept
+
+Each delivery target is configured through:
+
+1. **Context Secret**: A secret named `<DeliveryTarget>Context` containing connection information
+2. **Delivery Script**: An optional PowerShell script named `DeliverTo<DeliveryTarget>.ps1` for custom logic
+3. **Settings**: Optional configuration in AL-Go settings files
+
+### Supported Targets
+
+| Target | Purpose | Context Secret | Status |
+|--------|---------|----------------|--------|
+| GitHubPackages | GitHub Packages NuGet feed | `GitHubPackagesContext` | ✅ Experimental |
+| NuGet | Custom NuGet feed | `NuGetContext` | ✅ Experimental |
+| Storage | Azure Storage Account | `StorageContext` | ✅ Stable |
+| AppSource | Microsoft AppSource | `AppSourceContext` | ✅ Stable |
+
+## GitHub Packages Setup
+
+GitHub Packages provides a free NuGet feed for each GitHub organization, making it the recommended approach for most Per-Tenant Extension (PTE) scenarios.
+
+<Steps>
+  <Step title="Create Personal Access Token">
+    Generate a token with package permissions:
+
+    1. Navigate to [GitHub Personal Access Tokens](https://github.com/settings/tokens/new)
+    2. Create a **Classic Personal Access Token** (fine-grained tokens don't support packages yet)
+    3. Select the following scopes:
+       - `write:packages` - Required for publishing packages
+       - `read:packages` - Required for consuming packages
+       - `repo` - Required if your repositories are private
+    4. Set an appropriate expiration date
+    5. Generate and copy the token
+
+    <Warning>
+    Store the token securely. You won't be able to see it again after leaving the page.
+    </Warning>
+  </Step>
+
+  <Step title="Create GitHubPackagesContext Secret">
+    Create an organizational or repository secret:
+
+    1. Navigate to **Settings** → **Secrets and variables** → **Actions**
+    2. Click **New organization secret** (or **New repository secret**)
+    3. Name: `GitHubPackagesContext`
+    4. Value: Compressed JSON with token and server URL
+
+    ```json
+    {"token":"ghp_<your_token>","serverUrl":"https://nuget.pkg.github.com/<your_org>/index.json"}
+    ```
+
+    Replace:
+    - `<your_token>`: Your personal access token
+    - `<your_org>`: Your GitHub organization name
+
+    <Note>
+    Use the BcContainerHelper function `New-ALGoNuGetContext` to generate correctly formatted JSON:
+    
+    ```powershell
+    New-ALGoNuGetContext -token "ghp_..." -serverUrl "https://nuget.pkg.github.com/myorg/index.json"
+    ```
+    </Note>
+  </Step>
+
+  <Step title="Configure Repository Settings (Optional)">
+    Control delivery behavior in your AL-Go settings file:
+
+    ```json
+    {
+      "DeliverToGitHubPackages": {
+        "ContinuousDelivery": true,
+        "Branches": ["main", "release/*"]
+      }
+    }
+    ```
+
+    **Configuration options**:
+    - `ContinuousDelivery`: Enable automatic delivery on successful builds
+    - `Branches`: Array of branch patterns that trigger delivery
+
+    See [DeliverTo settings](https://aka.ms/algosettings#deliverto) for all options.
+  </Step>
+
+  <Step title="Verify Setup">
+    After creating the secret:
+
+    1. Push a commit to a configured branch
+    2. Monitor the CI/CD workflow run
+    3. Look for "Deliver to GitHubPackages" job
+    4. Check your organization's Packages tab for published packages
+    5. Verify package metadata and version
+  </Step>
+</Steps>
+
+### Consuming GitHub Packages
+
+GitHub Packages are automatically available for dependency resolution. When your apps reference dependencies published to your organization's GitHub Packages feed, AL-Go will automatically resolve and download them.
+
+**No additional configuration required** - AL-Go uses the `GitHubPackagesContext` secret for both publishing and consuming packages.
+
+## Custom NuGet Feed Setup
+
+For Azure DevOps Artifacts, private NuGet servers, or other custom feeds:
+
+<Steps>
+  <Step title="Obtain Feed Credentials">
+    Get authentication credentials for your NuGet feed:
+
+    **Azure DevOps**:
+    1. Navigate to **User Settings** → **Personal Access Tokens**
+    2. Create new token with **Packaging: Read & write** scope
+    3. Copy the token value
+
+    **Private NuGet Server**:
+    - Use API key or credentials provided by your server administrator
+  </Step>
+
+  <Step title="Get Feed URL">
+    Locate your NuGet v3 feed URL:
+
+    **Common formats**:
+    - **Azure DevOps**: `https://pkgs.dev.azure.com/<org>/<project>/_packaging/<feedName>/nuget/v3/index.json`
+    - **GitHub Packages**: `https://nuget.pkg.github.com/<org>/index.json`
+    - **NuGet.org**: `https://api.nuget.org/v3/index.json`
+    - **Private server**: Contact your administrator
+  </Step>
+
+  <Step title="Create NuGetContext Secret">
+    Create a repository or organization secret:
+
+    **Name**: `NuGetContext`
+
+    **Value**: Compressed JSON with credentials
+
+    ```json
+    {"token":"<YOUR_NUGET_TOKEN>","serverUrl":"https://pkgs.dev.azure.com/<org>/<project>/_packaging/<feed>/nuget/v3/index.json"}
+    ```
+
+    **Example for Azure DevOps**:
+    ```json
+    {"token":"abc123xyz","serverUrl":"https://pkgs.dev.azure.com/contoso/BusinessCentral/_packaging/BC-Apps/nuget/v3/index.json"}
+    ```
+  </Step>
+
+  <Step title="Configure Dependency Resolution (Optional)">
+    Unlike GitHub Packages, custom NuGet feeds are **not** automatically used for dependency resolution. Add your feed to `trustedNuGetFeeds`:
+
+    ```json
+    {
+      "trustedNuGetFeeds": [
+        {
+          "url": "https://pkgs.dev.azure.com/<org>/<project>/_packaging/<feed>/nuget/v3/index.json",
+          "authTokenSecret": "NuGetContext",
+          "patterns": ["*"]
+        }
+      ]
+    }
+    ```
+
+    **Parameters**:
+    - `url`: NuGet feed URL
+    - `authTokenSecret`: Name of the secret containing credentials
+    - `patterns`: Array of package name patterns (e.g., `["Contoso.*", "Fabrikam.*"]`)
+  </Step>
+</Steps>
+
+## Configuration Examples
+
+### Example 1: GitHub Packages for PTE Organization
+
+**Scenario**: A company developing Per-Tenant Extensions wants to automatically publish apps to GitHub Packages for internal distribution.
+
+**Organizational Secret**: `GitHubPackagesContext`
+```json
+{"token":"ghp_1234567890abcdef","serverUrl":"https://nuget.pkg.github.com/contoso/index.json"}
+```
+
+**AL-Go-Settings.json**:
+```json
+{
+  "DeliverToGitHubPackages": {
+    "ContinuousDelivery": true,
+    "Branches": ["main"]
+  }
+}
+```
+
+**Result**: Every successful build on the `main` branch automatically publishes packages to GitHub Packages.
+
+### Example 2: Azure DevOps Artifacts for PTE Development
+
+**Scenario**: A partner with existing Azure DevOps infrastructure wants to deliver PTEs to Azure DevOps Artifacts.
+
+**Repository Secret**: `NuGetContext`
+```json
+{"token":"<AZURE_DEVOPS_PAT>","serverUrl":"https://pkgs.dev.azure.com/contoso/BusinessCentral/_packaging/BC-Apps/nuget/v3/index.json"}
+```
+
+**AL-Go-Settings.json**:
+```json
+{
+  "DeliverToNuGet": {
+    "ContinuousDelivery": true,
+    "Branches": ["main", "release/*"]
+  },
+  "trustedNuGetFeeds": [
+    {
+      "url": "https://pkgs.dev.azure.com/contoso/BusinessCentral/_packaging/BC-Apps/nuget/v3/index.json",
+      "authTokenSecret": "NuGetContext",
+      "patterns": ["Contoso.*"]
+    }
+  ]
+}
+```
+
+**Result**: Packages are published to Azure DevOps Artifacts and available for dependency resolution.
+
+### Example 3: Multi-Environment PTE Setup
+
+**Scenario**: Publish development builds to GitHub Packages and production releases to a private NuGet feed.
+
+**Secrets**:
+- `GitHubPackagesContext`: For development builds
+- `NuGetContext`: For production releases
+
+**AL-Go-Settings.json**:
+```json
+{
+  "DeliverToGitHubPackages": {
+    "ContinuousDelivery": true,
+    "Branches": ["develop", "feature/*"]
+  },
+  "DeliverToNuGet": {
+    "ContinuousDelivery": true,
+    "Branches": ["main"]
+  },
+  "trustedNuGetFeeds": [
+    {
+      "url": "https://pkgs.dev.azure.com/contoso/BC/_packaging/Production/nuget/v3/index.json",
+      "authTokenSecret": "NuGetContext",
+      "patterns": ["Contoso.*"]
+    }
+  ]
+}
+```
+
+**Result**: 
+- Development branches → GitHub Packages
+- Main branch → Private NuGet feed
+
+### Example 4: Multiple Feed Configuration
+
+**Scenario**: Use multiple NuGet feeds for different package sources.
+
+**AL-Go-Settings.json**:
+```json
+{
+  "trustedNuGetFeeds": [
+    {
+      "url": "https://nuget.pkg.github.com/contoso/index.json",
+      "authTokenSecret": "GitHubPackagesContext",
+      "patterns": ["Contoso.*"]
+    },
+    {
+      "url": "https://pkgs.dev.azure.com/contoso/BC/_packaging/External/nuget/v3/index.json",
+      "authTokenSecret": "AzureDevOpsContext",
+      "patterns": ["External.*", "Partner.*"]
+    },
+    {
+      "url": "https://api.nuget.org/v3/index.json",
+      "patterns": ["Newtonsoft.*"]
+    }
+  ]
+}
+```
+
+**Result**: AL-Go resolves dependencies from multiple feeds based on package name patterns.
+
+## Custom Delivery Scripts
+
+For advanced scenarios, create custom delivery scripts to implement specialized delivery logic.
+
+<Steps>
+  <Step title="Create Delivery Script">
+    Create a PowerShell script in your `.github` folder:
+
+    **File**: `.github/DeliverToCustomFeed.ps1`
+
+    ```powershell
+    Param(
+        [Parameter(Mandatory = $true)]
+        [HashTable] $parameters
+    )
+
+    # Extract parameters
+    $project = $parameters.project
+    $projectName = $parameters.projectName
+    $type = $parameters.type
+    $appsFolder = $parameters.appsFolder
+
+    # Custom delivery logic
+    Write-Host "Delivering project '$projectName' (type: $type) to custom feed"
+    
+    if ($appsFolder) {
+        Get-ChildItem -Path $appsFolder -Filter "*.app" | ForEach-Object {
+            Write-Host "Processing app: $($_.Name)"
+            # Your custom delivery logic here
+        }
+    }
+    ```
+  </Step>
+
+  <Step title="Create Context Secret">
+    Create a secret named `CustomFeedContext` with your custom configuration:
+
+    ```json
+    {"customField1":"value1","customField2":"value2"}
+    ```
+
+    Access the secret in your script:
+    ```powershell
+    $context = $parameters.context | ConvertFrom-Json
+    $customValue = $context.customField1
+    ```
+  </Step>
+
+  <Step title="Configure AL-Go Settings">
+    Enable continuous delivery to your custom target:
+
+    ```json
+    {
+      "DeliverToCustomFeed": {
+        "ContinuousDelivery": true,
+        "Branches": ["main"]
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+### Script Parameters
+
+Your delivery script receives a hashtable with the following parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `project` | string | Project path (escaped for artifact naming) |
+| `projectName` | string | Project name (sanitized for paths) |
+| `type` | string | Delivery type: "CD" or "Release" |
+| `appsFolder` | string | Path to folder containing .app files |
+| `testAppsFolder` | string | Path to test app files (if available) |
+| `dependenciesFolder` | string | Path to dependency files (if available) |
+| `appsFolders` | string[] | Array of all app folders from different build modes |
+| `testAppsFolders` | string[] | Array of all test app folders |
+| `dependenciesFolders` | string[] | Array of all dependency folders |
+
+<Note>
+Folder parameters may be `$null` if no artifacts of that type were found. Use null checks before accessing folders.
+</Note>
+
+## Branch-Specific Delivery
+
+Configure different delivery targets for different branches:
+
+```json
+{
+  "DeliverToGitHubPackages": {
+    "ContinuousDelivery": true,
+    "Branches": ["develop", "feature/*"]
+  },
+  "DeliverToNuGet": {
+    "ContinuousDelivery": true,
+    "Branches": ["main", "release/*"]
+  },
+  "DeliverToStorage": {
+    "ContinuousDelivery": true,
+    "Branches": ["main"]
+  }
+}
+```
+
+**Use cases**:
+- **Feature branches**: Deliver to development feed for testing
+- **Main branch**: Deliver to production feed
+- **Release branches**: Deliver to staging feed for validation
+
+## Troubleshooting
+
+<CardGroup cols={2}>
+  <Card title="Missing Context Secret" icon="key">
+    **Error**: `Secret 'GitHubPackagesContext' not found`
+
+    **Solutions**:
+    - Verify secret exists at organization or repository level
+    - Check secret name matches exactly (case-sensitive)
+    - Ensure repository has access to organization secrets
+    - Confirm secret is not expired (for PATs)
+  </Card>
+
+  <Card title="Authentication Failed" icon="lock">
+    **Error**: `401 Unauthorized` when publishing packages
+
+    **Solutions**:
+    - Verify PAT has correct scopes (`write:packages`, `read:packages`)
+    - Check if token has expired
+    - Ensure token has access to target organization
+    - Confirm server URL is correct
+    - Validate JSON format (must be compressed)
+  </Card>
+
+  <Card title="Package Not Found" icon="search">
+    **Error**: Unable to find package during dependency resolution
+
+    **Solutions**:
+    - Verify package was published successfully
+    - Check `trustedNuGetFeeds` configuration
+    - Ensure package name matches app.json dependencies
+    - Confirm package version exists
+    - Verify feed URL is accessible
+  </Card>
+
+  <Card title="Curly Brackets Masked" icon="eye-slash">
+    **Error**: Seeing `***` instead of JSON in logs
+
+    **Solutions**:
+    - Ensure JSON is compressed (single line)
+    - Remove all newlines and extra whitespace
+    - Use `New-ALGoNuGetContext` to generate correct format
+    - Validate JSON syntax before creating secret
+  </Card>
+</CardGroup>
+
+### Debugging Steps
+
+<Steps>
+  <Step title="Check Workflow Logs">
+    Review the CI/CD workflow for delivery job:
+    
+    1. Navigate to **Actions** → Select workflow run
+    2. Look for "Deliver to [Target]" job
+    3. Review step outputs for errors
+    4. Check for authentication failures
+  </Step>
+
+  <Step title="Verify Package Publication">
+    Confirm packages were published:
+    
+    - **GitHub Packages**: Organization → Packages tab
+    - **Azure DevOps**: Artifacts → Feed → Packages
+    - **Custom feed**: Use feed's web interface
+  </Step>
+
+  <Step title="Test Dependency Resolution">
+    Verify dependency resolution works:
+    
+    1. Check workflow logs for "Resolving Dependencies"
+    2. Look for "Installing app dependencies" messages
+    3. Verify correct package versions are downloaded
+    4. Check for authentication errors
+  </Step>
+
+  <Step title="Validate Secret Format">
+    Use PowerShell to validate JSON:
+    
+    ```powershell
+    # Test JSON parsing
+    $json = '{"token":"test","serverUrl":"https://example.com"}'
+    $json | ConvertFrom-Json
+    
+    # Generate correct format
+    New-ALGoNuGetContext -token "ghp_..." -serverUrl "https://..."
+    ```
+  </Step>
+</Steps>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Token Scopes" icon="shield">
+    **Grant minimum permissions**:
+    - GitHub Packages: `write:packages`, `read:packages` only
+    - Azure DevOps: Packaging (Read & Write) scope
+    - Avoid granting `repo` scope unless necessary
+    - Use fine-grained tokens when available
+  </Card>
+
+  <Card title="Secret Storage" icon="vault">
+    **Use appropriate secret levels**:
+    - Organization secrets for shared feeds
+    - Repository secrets for project-specific feeds
+    - Environment secrets for environment-specific delivery
+    - Azure Key Vault for sensitive credentials
+  </Card>
+
+  <Card title="Token Rotation" icon="rotate">
+    **Regular credential updates**:
+    - Rotate PATs every 90 days
+    - Set expiration dates on all tokens
+    - Monitor token usage
+    - Revoke unused tokens
+  </Card>
+
+  <Card title="Access Control" icon="users">
+    **Limit feed access**:
+    - Use dedicated service accounts
+    - Implement feed permissions
+    - Audit package access
+    - Monitor download patterns
+  </Card>
+</CardGroup>
+
+## Limitations and Considerations
+
+<Warning>
+**Known Limitations**:
+
+- **Fine-grained tokens**: GitHub Packages doesn't support fine-grained PATs yet (use classic tokens)
+- **Package visibility**: GitHub Packages inherit repository visibility
+- **Retention policies**: Consider feed retention policies and storage costs
+- **Version conflicts**: Duplicate versions may cause resolution issues
+- **Feed limits**: Some feeds have package count or size limits
+</Warning>
+
+### Best Practices
+
+1. **Use semantic versioning**: Follow semver (e.g., 1.2.3) for all packages
+2. **Test in isolation**: Validate delivery configuration in test repositories first
+3. **Monitor package sizes**: Be aware of feed storage limits
+4. **Document dependencies**: Maintain clear dependency documentation
+5. **Implement cleanup**: Set up package retention and cleanup policies
+6. **Version consistency**: Ensure app.json versions match package versions
+7. **Feed organization**: Use separate feeds for dev, test, and production
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Continuous Deployment" href="./continuous-deployment">
+    Learn about automated deployment strategies
+  </Card>
+
+  <Card title="Sandbox Environment" href="./sandbox-environment">
+    Set up sandbox environments for testing
+  </Card>
+
+  <Card title="AL-Go Settings" href="https://aka.ms/algosettings">
+    Explore all configuration options
+  </Card>
+
+  <Card title="AL-Go Secrets" href="https://aka.ms/algosecrets">
+    Learn about secret management
+  </Card>
+</CardGroup>

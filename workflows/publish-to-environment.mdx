@@ -1,0 +1,522 @@
+---
+title: Publish to Environment
+description: Manually deploy applications to Business Central environments with AL-Go for GitHub
+---
+
+The Publish to Environment workflow enables on-demand deployment of your Business Central applications to specific environments. Unlike the automatic deployments in CI/CD, this workflow gives you full control over what version gets deployed and where.
+
+## Overview
+
+Use this workflow to:
+- **Deploy specific versions** to any environment
+- **Test releases** before production deployment
+- **Promote artifacts** across environments (DEV → QA → PROD)
+- **Create environments dynamically** if they don't exist
+- **Deploy PR builds** for testing specific changes
+
+## Triggering the Workflow
+
+This workflow must be triggered manually from the GitHub Actions interface.
+
+<Steps>
+  <Step title="Navigate to Actions">
+    Go to your repository on GitHub and click the **Actions** tab.
+  </Step>
+
+  <Step title="Select Publish To Environment">
+    Click on **Publish To Environment** in the workflows list.
+  </Step>
+
+  <Step title="Run Workflow">
+    Click **Run workflow** and configure the deployment parameters.
+  </Step>
+</Steps>
+
+## Workflow Parameters
+
+<ParamField path="appVersion" type="string" default="current">
+  **App version to deploy**
+  
+  Specifies which version to deploy:
+  - `current`: Latest build from the current branch
+  - `latest`: Most recent successful build
+  - `prerelease`: Latest prerelease version
+  - `draft`: Latest draft release
+  - `1.0.0`: Specific version number
+  - `PR_123`: Build from pull request #123
+  
+  Example: `latest`
+</ParamField>
+
+<ParamField path="environmentName" type="string" required>
+  **Environment mask**
+  
+  Target environment(s) for deployment:
+  - `*`: All configured environments
+  - `PROD`: Single environment named "PROD"
+  - `PROD*`: All environments starting with "PROD"
+  - `QA,STAGING`: Multiple specific environments (comma-separated)
+  
+  Example: `PROD`
+</ParamField>
+
+<ParamField path="createEnvIfNotExists" type="boolean" default="false">
+  **Create environment if it does not exist**
+  
+  When true, creates the environment in GitHub and Business Central if missing.
+  
+  <Warning>
+    Use with care. Requires environment secrets/variables to be configured:
+    - `{envName}_AuthContext`
+    - `{envName}_EnvironmentName`
+    - `{envName}_Scope`
+  </Warning>
+  
+  Example: `false`
+</ParamField>
+
+## Workflow Jobs
+
+<Steps>
+  <Step title="Initialization">
+    Prepares the deployment and validates environment configuration.
+
+    **Actions Performed:**
+    - Reads AL-Go settings
+    - Determines which environments match the environment mask
+    - Validates environment configuration
+    - Checks authentication contexts
+    - Initiates device code flow if needed (for interactive auth)
+
+    **Environment Matching:**
+    The workflow resolves environment masks to actual environments:
+    - `*` matches all environments in `.github/AL-Go-Settings.json`
+    - `PROD*` matches environments like PROD, PROD-EU, PROD-US
+    - Specific names match exactly
+
+    <Note>
+      If no authentication context is found for an environment, a device code flow is initiated, requiring manual authentication.
+    </Note>
+  </Step>
+
+  <Step title="Deploy">
+    Deploys artifacts to the matched environments.
+
+    **Deployment Process:**
+    1. **Get Artifacts**: Downloads the specified version
+    2. **Deploy to Business Central**: Publishes apps to BC environment
+    3. **Deploy to PowerPlatform**: If configured, deploys PP solutions
+
+    **Deployment Strategy:**
+    - Runs in parallel for multiple environments
+    - Uses environment-specific settings and secrets
+    - Supports both Business Central and PowerPlatform
+    - Reports deployment URL in environment summary
+
+    **Environment URL:**
+    After deployment, the workflow provides a link to the deployed environment.
+  </Step>
+
+  <Step title="Post-Process">
+    Finalizes the workflow and reports telemetry.
+
+    Always runs to ensure cleanup, even if deployment fails.
+  </Step>
+</Steps>
+
+## Environment Configuration
+
+### Setting Up Environments
+
+<Steps>
+  <Step title="Create GitHub Environment">
+    In repository settings, navigate to **Environments** and create a new environment.
+
+    Example: `PROD`
+  </Step>
+
+  <Step title="Add Authentication Secret">
+    Add a secret to the environment or repository:
+
+    **Secret name**: `PROD-AuthContext` or `PROD_AuthContext`
+
+    **Secret value** (Service-to-Service):
+    ```json
+    {
+      "tenantId": "your-tenant-id",
+      "clientId": "your-client-id",
+      "clientSecret": "your-client-secret",
+      "scopes": "https://api.businesscentral.dynamics.com/.default"
+    }
+    ```
+
+    **Alternative** (Username/Password - not recommended for production):
+    ```json
+    {
+      "tenantId": "your-tenant-id",
+      "username": "user@domain.com",
+      "password": "your-password"
+    }
+    ```
+  </Step>
+
+  <Step title="Configure Environment Settings">
+    Optionally add environment-specific variables:
+
+    **Variable name**: `ALGoEnvironmentSettings`
+
+    **Variable value**:
+    ```json
+    {
+      "environmentName": "MyProductionBC",
+      "companyName": "CRONUS International Ltd.",
+      "artifacts": "*"
+    }
+    ```
+  </Step>
+</Steps>
+
+### Environment Authentication Methods
+
+<CardGroup cols={2}>
+  <Card title="Service-to-Service (S2S)" icon="server">
+    **Recommended for automation**
+    
+    Uses Azure AD app registration with client secret or certificate.
+    
+    - Secure and automated
+    - No user interaction required
+    - Supports certificate-based auth
+  </Card>
+
+  <Card title="Device Code Flow" icon="mobile">
+    **Interactive authentication**
+    
+    Initiated when no auth context is found.
+    
+    - Requires manual login
+    - Shows device code in workflow summary
+    - Useful for one-time or test deployments
+  </Card>
+</CardGroup>
+
+## App Version Options
+
+### Deploying Different Versions
+
+<Tabs>
+  <Tab title="Latest Build">
+    Deploy the most recent successful build:
+
+    ```yaml
+    appVersion: latest
+    ```
+
+    This uses artifacts from the latest successful CI/CD workflow run.
+  </Tab>
+
+  <Tab title="Current Branch">
+    Deploy from the current branch:
+
+    ```yaml
+    appVersion: current
+    ```
+
+    Uses the latest build from the branch you're currently on.
+  </Tab>
+
+  <Tab title="Specific Version">
+    Deploy a specific release version:
+
+    ```yaml
+    appVersion: 1.0.0
+    ```
+
+    Deploys artifacts from the GitHub release tagged `1.0.0`.
+  </Tab>
+
+  <Tab title="Pull Request">
+    Deploy from a pull request build:
+
+    ```yaml
+    appVersion: PR_42
+    ```
+
+    Deploys artifacts from PR #42 (useful for testing before merge).
+  </Tab>
+
+  <Tab title="Prerelease">
+    Deploy the latest prerelease:
+
+    ```yaml
+    appVersion: prerelease
+    ```
+
+    Deploys artifacts from the most recent prerelease version.
+  </Tab>
+</Tabs>
+
+## Multi-Environment Deployment
+
+### Deploying to Multiple Environments
+
+Use environment masks to deploy to multiple environments simultaneously:
+
+<CodeGroup>
+```yaml All Environments
+environmentName: *
+```
+
+```yaml Pattern Match
+environmentName: PROD*
+# Matches: PROD, PROD-EU, PROD-US, PROD-ASIA
+```
+
+```yaml Specific List
+environmentName: QA,STAGING
+# Deploys to both QA and STAGING
+```
+</CodeGroup>
+
+<Note>
+  Each environment deployment runs in parallel, speeding up the process when deploying to multiple environments.
+</Note>
+
+## PowerPlatform Deployment
+
+For Per-Tenant Extension repositories with PowerPlatform solutions:
+
+<Steps>
+  <Step title="Configure PowerPlatform">
+    Ensure `powerPlatformSolutionFolder` is set in `.github/AL-Go-Settings.json`:
+
+    ```json
+    {
+      "type": "PTE",
+      "powerPlatformSolutionFolder": "PowerPlatformSolution"
+    }
+    ```
+  </Step>
+
+  <Step title="Add PowerPlatform Auth">
+    Include PowerPlatform credentials in the environment auth context:
+
+    ```json
+    {
+      "tenantId": "your-tenant-id",
+      "clientId": "your-client-id",
+      "clientSecret": "your-client-secret",
+      "scopes": "https://api.businesscentral.dynamics.com/.default",
+      "ppEnvironmentUrl": "https://your-env.crm.dynamics.com"
+    }
+    ```
+  </Step>
+
+  <Step title="Deploy">
+    Run the workflow - PowerPlatform solutions deploy automatically after Business Central apps.
+  </Step>
+</Steps>
+
+## Dynamic Environment Creation
+
+When `createEnvIfNotExists` is enabled, the workflow can create environments on-the-fly.
+
+### Requirements
+
+For dynamic environment creation, configure these secrets/variables:
+
+<ParamField path="{envName}_AuthContext" type="secret">
+  Authentication context for the environment (see format above).
+</ParamField>
+
+<ParamField path="{envName}_EnvironmentName" type="variable">
+  Name of the Business Central environment to create.
+  
+  Example: `MyNewEnvironment`
+</ParamField>
+
+<ParamField path="{envName}_Scope" type="variable">
+  Environment scope: `Production` or `Sandbox`
+  
+  Example: `Sandbox`
+</ParamField>
+
+<Warning>
+  Dynamic environment creation requires appropriate permissions in Business Central Admin Center.
+</Warning>
+
+## Build Modes
+
+The workflow respects build mode configuration for deployments:
+
+- **Default**: Standard build artifacts
+- **Clean**: Clean build artifacts
+- **Translated**: Localized/translated artifacts
+
+Build mode is determined by environment-specific settings or defaults to `Default`.
+
+## Deployment Strategy
+
+The workflow uses intelligent deployment strategies:
+
+### Dependency Order
+
+Apps are deployed in dependency order:
+1. Base/framework apps
+2. Apps with dependencies on base apps
+3. Apps with dependencies on other apps
+4. Test apps (if included)
+
+### Upgrade vs. Install
+
+- **Existing apps**: Upgraded to new version
+- **New apps**: Installed for the first time
+- **Removed apps**: Not automatically uninstalled
+
+### Schema Sync
+
+The deployment:
+- Synchronizes database schema
+- Runs data upgrade code
+- Validates compatibility
+
+## Monitoring Deployments
+
+### Workflow Output
+
+The workflow provides detailed output:
+
+- **Environment URL**: Link to deployed environment
+- **Deployment logs**: Detailed logs for each app
+- **Error messages**: Clear error reporting if deployment fails
+- **Artifact information**: Which versions were deployed
+
+### GitHub Environments
+
+Deployments appear in the **Environments** section:
+
+- View deployment history
+- See currently deployed versions
+- Access environment URLs
+- Review deployment protection rules
+
+## Permissions and Security
+
+### Required Permissions
+
+```yaml
+permissions:
+  actions: read          # Read workflow artifacts
+  contents: read         # Read repository content
+  id-token: write        # OIDC authentication
+  pull-requests: read    # Read PR information (for PR builds)
+  checks: read           # Read workflow check status
+```
+
+### Environment Protection Rules
+
+Configure protection rules in GitHub:
+
+- **Required reviewers**: Require approval before deployment
+- **Wait timer**: Delay deployment for a specified time
+- **Deployment branches**: Restrict which branches can deploy
+
+<Note>
+  Production environments should always have protection rules to prevent accidental deployments.
+</Note>
+
+## Example Scenarios
+
+### Scenario 1: Deploy Latest to Production
+
+<Steps>
+  <Step title="Run Workflow">
+    - **appVersion**: `latest`
+    - **environmentName**: `PROD`
+    - **createEnvIfNotExists**: `false`
+  </Step>
+
+  <Step title="Approve Deployment">
+    If protection rules are configured, approve the deployment.
+  </Step>
+
+  <Step title="Verify">
+    Check the environment URL to verify successful deployment.
+  </Step>
+</Steps>
+
+### Scenario 2: Test PR in Staging
+
+<Steps>
+  <Step title="Run Workflow">
+    - **appVersion**: `PR_42`
+    - **environmentName**: `STAGING`
+    - **createEnvIfNotExists**: `false`
+  </Step>
+
+  <Step title="Test Changes">
+    Test the PR changes in the staging environment.
+  </Step>
+
+  <Step title="Approve PR">
+    If tests pass, approve and merge the pull request.
+  </Step>
+</Steps>
+
+### Scenario 3: Deploy to All QA Environments
+
+<Steps>
+  <Step title="Run Workflow">
+    - **appVersion**: `current`
+    - **environmentName**: `QA*`
+    - **createEnvIfNotExists**: `false`
+  </Step>
+
+  <Step title="Monitor">
+    Watch parallel deployments to all QA environments.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<CardGroup cols={2}>
+  <Card title="Authentication Failed" icon="lock">
+    Verify the auth context secret is correctly formatted and has valid credentials. Check Azure AD app permissions.
+  </Card>
+
+  <Card title="Environment Not Found" icon="circle-question">
+    Ensure the environment exists in GitHub settings and is listed in AL-Go-Settings.json.
+  </Card>
+
+  <Card title="Artifacts Not Found" icon="box-open">
+    Check that the specified appVersion exists. Verify workflow runs and releases.
+  </Card>
+
+  <Card title="Deployment Timeout" icon="clock">
+    Large apps may timeout. Increase timeout or deploy in smaller batches.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Use Protection Rules">
+    Always configure approval requirements for production environments.
+  </Step>
+
+  <Step title="Test Before Production">
+    Deploy to staging/QA environments before production.
+  </Step>
+
+  <Step title="Use Specific Versions">
+    For production, specify exact version numbers rather than "latest".
+  </Step>
+
+  <Step title="Monitor Deployments">
+    Watch the deployment logs and verify functionality after deployment.
+  </Step>
+
+  <Step title="Document Deployments">
+    Use deployment comments to document what was deployed and why.
+  </Step>
+</Steps>

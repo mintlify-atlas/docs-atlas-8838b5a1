@@ -1,0 +1,84 @@
+---
+title: Analyze Tests
+description: Analyze test results in AL-Go workflows
+---
+
+The **Analyze Tests** action analyzes test results for Business Central applications in your AL-Go repository.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/AnalyzeTests@main
+  with:
+    testType: 'UnitTest'
+```
+
+## Inputs
+
+<ParamField path="testType" type="string" required>
+  Type of tests to analyze. Common values include:
+  - `UnitTest` - Unit tests
+  - `BCPTTest` - Business Central Performance Toolkit tests
+  - `PageScriptingTest` - Page scripting tests
+</ParamField>
+
+<ParamField path="project" type="string" default=".">
+  Project to analyze. Use `.` for the root project.
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action. Options: `powershell` or `pwsh`.
+</ParamField>
+
+## Example
+
+Analyze unit test results after running tests:
+
+```yaml
+name: Run Tests
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Unit Tests
+        run: |
+          # Your test execution steps
+      
+      - name: Analyze Test Results
+        uses: microsoft/AL-Go/Actions/AnalyzeTests@main
+        with:
+          project: '.'
+          testType: 'UnitTest'
+```
+
+## Multi-Project Analysis
+
+Analyze tests for a specific project in a multi-project repository:
+
+```yaml
+- name: Analyze Tests for Project A
+  uses: microsoft/AL-Go/Actions/AnalyzeTests@main
+  with:
+    project: 'ProjectA'
+    testType: 'UnitTest'
+
+- name: Analyze BCPT Tests for Project B
+  uses: microsoft/AL-Go/Actions/AnalyzeTests@main
+  with:
+    project: 'ProjectB'
+    testType: 'BCPTTest'
+```
+
+<Note>
+  This action processes test result files and provides analysis that can be used for reporting, quality gates, and CI/CD decisions.
+</Note>
+
+<Warning>
+  Ensure that tests have been executed before running this action, as it analyzes existing test result files.
+</Warning>

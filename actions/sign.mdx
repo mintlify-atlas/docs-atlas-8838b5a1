@@ -1,0 +1,96 @@
+---
+title: Sign
+description: Sign Business Central app files using Azure Key Vault
+---
+
+The **Sign** action digitally signs Business Central app (.app) files using certificates stored in Azure Key Vault.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/Sign@main
+  with:
+    azureCredentialsJson: ${{ secrets.AZURE_CREDENTIALS }}
+    pathToFiles: 'output/*.app'
+```
+
+## Inputs
+
+<ParamField path="azureCredentialsJson" type="string" required>
+  Azure credentials secret (Base64 encoded) containing the service principal credentials with access to Azure Key Vault.
+</ParamField>
+
+<ParamField path="pathToFiles" type="string" required>
+  The path to the files to be signed. Supports wildcards (e.g., `output/*.app`).
+</ParamField>
+
+<ParamField path="timestampService" type="string" default="http://timestamp.digicert.com">
+  The URI of the timestamp server used to timestamp the signature.
+</ParamField>
+
+<ParamField path="digestAlgorithm" type="string" default="SHA256">
+  The digest algorithm to use for signing and timestamping. Common values:
+  - `SHA256` (recommended)
+  - `SHA384`
+  - `SHA512`
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action. Options: `powershell` or `pwsh`.
+</ParamField>
+
+## Example
+
+Sign apps after building:
+
+```yaml
+name: Build and Sign
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-sign:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Apps
+        run: |
+          # Your build steps
+      
+      - name: Sign Apps
+        uses: microsoft/AL-Go/Actions/Sign@main
+        with:
+          azureCredentialsJson: ${{ secrets.AZURE_CREDENTIALS }}
+          pathToFiles: 'output/*.app'
+          timestampService: 'http://timestamp.digicert.com'
+          digestAlgorithm: 'SHA256'
+```
+
+## Azure Credentials Setup
+
+The `azureCredentialsJson` should contain a Base64-encoded JSON with the following structure:
+
+```json
+{
+  "clientId": "<service-principal-client-id>",
+  "clientSecret": "<service-principal-secret>",
+  "tenantId": "<azure-tenant-id>",
+  "subscriptionId": "<azure-subscription-id>",
+  "keyVaultName": "<key-vault-name>",
+  "certificateName": "<certificate-name>"
+}
+```
+
+<Note>
+  Code signing helps ensure the authenticity and integrity of your Business Central apps, which is especially important for AppSource apps and enterprise deployments.
+</Note>
+
+<Warning>
+  Keep your Azure credentials secure by storing them as GitHub encrypted secrets. Never commit credentials directly in your workflow files or repository.
+</Warning>
+
+<Warning>
+  Ensure the service principal has the necessary permissions to access the certificate in Azure Key Vault (typically `Key Vault Secrets User` and `Key Vault Certificates User` roles).
+</Warning>

@@ -1,0 +1,203 @@
+---
+title: Run Pipeline
+description: Execute build and test pipelines for AL-Go projects
+---
+
+# Run Pipeline
+
+The Run Pipeline action executes the complete build and test pipeline for AL-Go repositories. This action handles compilation, testing, artifact generation, and all other build-related tasks for Business Central projects.
+
+## Overview
+
+This composite action orchestrates the entire build process, including:
+
+- Building AL projects with specified build modes
+- Installing dependencies and test apps
+- Running tests against baselines
+- Creating and managing build artifacts
+- Setting up and managing Docker containers for builds
+
+<Note>
+Before running this action, you must first execute both `ReadSettings` and `ReadSecrets` actions to populate the required environment variables.
+</Note>
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  The shell in which to run the PowerShell script. Choose between:
+  - `powershell` - Windows PowerShell 5.1
+  - `pwsh` - PowerShell 7+
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token for authenticating API calls and accessing repository resources during the pipeline run.
+</ParamField>
+
+<ParamField path="artifact" type="string" default="">
+  ArtifactUrl to use for the build. This specifies which Business Central artifacts (Docker images) should be used as the build environment. If not specified, the value from settings will be used.
+</ParamField>
+
+<ParamField path="project" type="string" default=".">
+  Project folder path relative to the repository root. Use this when your repository contains multiple projects. The default `.` indicates the root project.
+</ParamField>
+
+<ParamField path="buildMode" type="string" default="Default">
+  Specifies the mode to use for build steps. Build modes can customize compiler settings, output paths, and other build-specific configurations. Common values include:
+  - `Default` - Standard build mode
+  - `Clean` - Clean build from scratch
+  - Custom build modes defined in your settings
+</ParamField>
+
+<ParamField path="installAppsJson" type="string" default="">
+  Path to a JSON-formatted file containing a list of apps to install before building. Use this to specify runtime dependencies required for your project.
+  
+  Example format:
+  ```json
+  [
+    {"appId": "guid", "version": "1.0.0.0"},
+    {"appId": "guid", "version": "2.0.0.0"}
+  ]
+  ```
+</ParamField>
+
+<ParamField path="installTestAppsJson" type="string" default="">
+  Path to a JSON-formatted file containing a list of test apps to install. These apps are typically required for running tests but not for runtime operation.
+</ParamField>
+
+<ParamField path="baselineWorkflowRunId" type="string" default="">
+  The run ID of a baseline workflow to compare against. Used for baseline testing to ensure new changes don't break existing functionality.
+</ParamField>
+
+<ParamField path="baselineWorkflowSHA" type="string" default="">
+  The Git SHA of the baseline workflow run. This ensures you're comparing against a specific version of the codebase.
+</ParamField>
+
+## Outputs
+
+This action produces environment variables rather than direct outputs:
+
+### Environment Variables
+
+<ParamField path="containerName" type="string">
+  The name of the Docker container that was created and used during the build process. This can be useful for debugging or additional post-build operations.
+</ParamField>
+
+## Prerequisites
+
+Before using this action, ensure you have:
+
+1. **ReadSettings**: The `env.Settings` variable must be populated by calling the `ReadSettings` action
+2. **ReadSecrets**: The `env.Secrets` variable must contain all necessary secrets including:
+   - `licenseFileUrl` - URL to the Business Central license file
+   - `codeSignCertificateUrl` - URL to code signing certificate (if using code signing)
+   - `codeSignCertificatePassword` - Password for the code signing certificate
+   - `keyVaultCertificateUrl` - Azure Key Vault certificate URL (if using Key Vault)
+   - `keyVaultCertificatePassword` - Key Vault certificate password
+   - `keyVaultClientId` - Azure Key Vault client ID
+   - `gitHubPackagesContext` - Context for GitHub Packages authentication
+   - `applicationInsightsConnectionString` - Application Insights connection string (if using telemetry)
+
+## Usage Example
+
+Here's a complete example showing how to use the Run Pipeline action in a workflow:
+
+```yaml
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Read settings
+        uses: microsoft/AL-Go/Actions/ReadSettings@main
+        with:
+          shell: pwsh
+          project: '.'
+      
+      - name: Read secrets
+        uses: microsoft/AL-Go/Actions/ReadSecrets@main
+        with:
+          shell: pwsh
+          gitHubSecrets: ${{ toJson(secrets) }}
+          getSecrets: 'licenseFileUrl,CodeSignCertificate'
+      
+      - name: Run pipeline
+        uses: microsoft/AL-Go/Actions/RunPipeline@main
+        with:
+          shell: pwsh
+          project: '.'
+          buildMode: 'Default'
+```
+
+## Advanced Usage
+
+### Using Custom Artifacts
+
+```yaml
+- name: Run pipeline with custom artifact
+  uses: microsoft/AL-Go/Actions/RunPipeline@main
+  with:
+    artifact: 'https://bcartifacts.azureedge.net/onprem/22.0.54157.55210/w1'
+    project: 'MyProject'
+```
+
+### Running with Baseline Comparison
+
+```yaml
+- name: Run pipeline with baseline
+  uses: microsoft/AL-Go/Actions/RunPipeline@main
+  with:
+    baselineWorkflowRunId: '1234567890'
+    baselineWorkflowSHA: 'abc123def456'
+```
+
+### Installing Dependencies
+
+```yaml
+- name: Run pipeline with dependencies
+  uses: microsoft/AL-Go/Actions/RunPipeline@main
+  with:
+    installAppsJson: '.AL-Go/dependencies.json'
+    installTestAppsJson: '.AL-Go/test-dependencies.json'
+```
+
+<Warning>
+The Run Pipeline action requires significant system resources and Docker support. Ensure your runner has adequate memory, disk space, and Docker configured properly.
+</Warning>
+
+## Troubleshooting
+
+### Container Name Not Set
+
+If the `containerName` environment variable is not being set, ensure:
+- Docker is properly installed and running on the runner
+- The runner has permissions to create Docker containers
+- Artifact URL is valid and accessible
+
+### Build Failures
+
+Common causes of build failures:
+- Missing or invalid license file URL in secrets
+- Incorrect artifact URL or version
+- Missing dependencies in `installAppsJson`
+- Insufficient runner resources
+
+### Baseline Comparison Issues
+
+When using baseline comparison:
+- Verify the workflow run ID exists and is accessible
+- Ensure the SHA matches a valid commit in your repository
+- Check that baseline artifacts are still available
+
+## Related Actions
+
+- [Read Settings](/actions/read-settings) - Required prerequisite
+- [Read Secrets](/actions/read-secrets) - Required prerequisite

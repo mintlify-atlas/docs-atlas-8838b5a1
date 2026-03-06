@@ -1,0 +1,366 @@
+---
+title: Migrate from Azure DevOps (With History)
+description: Learn how to migrate your Business Central repository from Azure DevOps to AL-Go for GitHub while preserving complete commit history
+---
+
+This guide explains how to migrate a repository from Azure DevOps to AL-Go for GitHub **while preserving the full commit history**. This method is recommended when you need to maintain a complete audit trail of all changes.
+
+<Note>
+This migration process leaves your existing Azure DevOps repository untouched. You can continue working in Azure DevOps if needed while testing AL-Go for GitHub.
+</Note>
+
+## Overview
+
+This migration method uses GitHub's repository import feature to transfer your complete git history from Azure DevOps, then replaces the Azure DevOps CI/CD configuration with AL-Go workflows.
+
+<Warning>
+If you don't need to preserve commit history, the [migration without history](/migration/from-azure-devops) method is simpler and faster.
+</Warning>
+
+## Prerequisites
+
+Before starting the migration, ensure you have:
+
+- Access to your Azure DevOps repository
+- A GitHub account with repository creation permissions
+- VS Code installed on your PC
+- Git credentials for Azure DevOps
+
+## Migration Process
+
+<Steps>
+
+<Step title="Generate Azure DevOps Git Credentials">
+
+Navigate to your Azure DevOps repository and click the **Clone** button, then click **Generate Git Credentials**.
+
+![Generate Credentials](https://github.com/microsoft/AL-Go/assets/10775043/59b623eb-56da-4821-8869-b27a34954597)
+
+<Note>
+Copy the generated **Password** to your clipboard. You'll need this in the next step for authentication.
+</Note>
+
+</Step>
+
+<Step title="Import Repository to GitHub">
+
+Navigate to GitHub, log in, and click the **+** menu in the top right corner. Select **Import repository**.
+
+![Import Repository](https://github.com/microsoft/AL-Go/assets/10775043/9b8eb461-e03a-4c77-b0d2-be5bbb2ea25b)
+
+Enter the following information:
+- **Your old repository's clone URL** - The Git URL from Azure DevOps
+- **Owner** - Choose the organization or user account
+- **Repository name** - Name for your new GitHub repository
+- **Privacy** - Select Public or Private
+
+Click **Begin Import**.
+
+![Begin Import](https://github.com/microsoft/AL-Go/assets/10775043/2f94e677-f713-4771-953a-16d7f1a8a0aa)
+
+</Step>
+
+<Step title="Authenticate with Azure DevOps">
+
+If your repository requires authentication, GitHub will prompt you to provide credentials.
+
+![Authentication Required](https://github.com/microsoft/AL-Go/assets/10775043/a3c16e8d-0ae4-43c0-99d1-4df57acf8551)
+
+Paste the password you copied earlier from Azure DevOps.
+
+</Step>
+
+<Step title="Wait for Import to Complete">
+
+GitHub will import your repository including all branches, commits, and history. This may take several minutes depending on repository size.
+
+Once complete, click the link to navigate to your new repository.
+
+![Import Complete](https://github.com/microsoft/AL-Go/assets/10775043/7f7a6d5a-4d3b-4e47-8ac2-426dfd1a3c39)
+
+<Note>
+You may see messages about branches and pull requests because GitHub has imported everything from Azure DevOps. This is expected behavior.
+</Note>
+
+</Step>
+
+<Step title="Clone the Imported GitHub Repository">
+
+In your new GitHub repository, click the **Code** button (shown as `<>`) and copy the git URL to your clipboard.
+
+![Clone New Repo](https://github.com/microsoft/AL-Go/assets/10775043/2089bcc3-8aa3-4582-be9d-3ce77364198a)
+
+In VS Code:
+1. Press `Ctrl+Shift+P`
+2. Select **Git Clone**
+3. Paste your git URL
+4. Select a location, clone, and open the repository in VS Code
+
+![Clone in VS Code](https://github.com/microsoft/AL-Go/assets/10775043/4d91c31d-1aee-4fad-990e-73a075e69026)
+
+</Step>
+
+<Step title="Remove Azure DevOps Artifacts">
+
+Delete the files and folders that are not needed in AL-Go for GitHub.
+
+<Warning>
+Delete the following folders:
+- `.github` (if present from Azure DevOps)
+- `.azureDevOps`
+- `.pipelines`
+- `scripts` (Azure DevOps-specific scripts)
+
+Keep:
+- Your **app folders**
+- Your **test app folders**
+- Any other project-specific files you want to preserve
+</Warning>
+
+![Delete Azure DevOps Files](https://github.com/microsoft/AL-Go/assets/10775043/e8d21772-30dc-448a-8892-92a66c7c36e6)
+
+</Step>
+
+<Step title="Download AL-Go Template Files">
+
+Download the appropriate AL-Go template for your project:
+
+<CardGroup cols={2}>
+  <Card title="PTE Template" icon="cube" href="https://github.com/microsoft/AL-Go-PTE/archive/refs/heads/main.zip">
+    Download for Per-Tenant Extensions
+  </Card>
+  <Card title="AppSource Template" icon="store" href="https://github.com/microsoft/AL-Go-AppSource/archive/refs/heads/main.zip">
+    Download for AppSource applications
+  </Card>
+</CardGroup>
+
+Unpack the downloaded .zip file and open the extracted folder in File Explorer.
+
+![Template Files](https://github.com/microsoft/AL-Go/assets/10775043/7539c845-b696-4347-8b2f-d51d6be2ebfa)
+
+</Step>
+
+<Step title="Copy AL-Go Template Files">
+
+From the unpacked template folder, drag the following folders to your VS Code window:
+
+- `.AL-Go` folder (required)
+- `.github` folder (required)
+- Any other template files you need
+
+When prompted, select **Copy the folders**.
+
+![Copy Template Files](https://github.com/microsoft/AL-Go/assets/10775043/edd24801-73cd-4ad4-9fc6-5d2cd80ac6c8)
+
+</Step>
+
+<Step title="Configure AL-Go Settings">
+
+Modify the necessary settings for your application. Common settings to configure:
+
+### Repository Settings
+
+Typical settings you may need to modify:
+
+- **appFolders** - Specify folders containing your apps ([documentation](https://aka.ms/algosettings#appfolders))
+- **testFolders** - Specify folders containing test apps ([documentation](https://aka.ms/algosettings#testfolders))
+- **runNumberOffset** - Adjust build numbering to continue from Azure DevOps ([documentation](https://aka.ms/algosettings#runNumberOffset))
+
+<Note>
+Use `runNumberOffset` to maintain build number continuity from Azure DevOps. Set it to your last Azure DevOps build number.
+</Note>
+
+### Code Analysis Settings
+
+- **enableAppSourceCop** - Enable AppSource validation ([documentation](https://aka.ms/algosettings#enableAppSourceCop))
+- **enablePerTenantExtensionCop** - Enable PTE validation ([documentation](https://aka.ms/algosettings#enablePerTenantExtensionCop))
+- **enableCodeCop** - Enable code analysis ([documentation](https://aka.ms/algosettings#enableCodeCop))
+- **enableUICop** - Enable UI validation ([documentation](https://aka.ms/algosettings#enableUICop))
+- **rulesetFile** - Specify custom ruleset ([documentation](https://aka.ms/algosettings#rulesetFile))
+- **enableExternalRulesets** - Allow external rulesets ([documentation](https://aka.ms/algosettings#enableExternalRulesets))
+
+### AppSource-Specific Settings
+
+- **appSourceMandatoryAffixes** - Define required affixes ([documentation](https://aka.ms/algosettings#appSourceMandatoryAffixes))
+
+### Required Secrets
+
+<Note>
+Secrets must be created in your GitHub repository settings under **Settings** > **Secrets and variables** > **Actions**.
+</Note>
+
+**For AppSource Apps:**
+- `LicenseFileUrl` - Secure direct download URL to your license file
+
+**For Code Signing (Optional):**
+- `CodeSignCertificateUrl` - Secure direct download URL to your PFX certificate
+- `CodeSignCertificatePassword` - Password for the PFX certificate
+
+</Step>
+
+<Step title="Commit and Push Your Changes">
+
+In VS Code's Source Control area:
+
+1. Click the **+** icon to **Add** all changed files to staging
+2. Enter a descriptive commit message (e.g., "Add AL-Go for GitHub workflows")
+3. Click **Commit**
+4. Click **Sync Changes** to push to GitHub
+
+![Commit Changes](https://github.com/microsoft/AL-Go/assets/10775043/55afdd6f-e401-4542-9029-652f5ce7a3e9)
+
+</Step>
+
+<Step title="Enable GitHub Actions">
+
+Navigate back to your repository on GitHub. Verify your files have been uploaded.
+
+![Files Uploaded](https://github.com/microsoft/AL-Go/assets/10775043/4f717190-5e5f-45e9-a187-186ac45be590)
+
+Go to **Settings** > **Actions** > **General**:
+1. Select **Allow all actions and reusable workflows**
+2. Click **Save**
+
+</Step>
+
+<Step title="Run the CI/CD Workflow">
+
+Click **Actions**, select the **CI/CD** workflow, and click **Run workflow** to manually trigger the first build.
+
+![Run Workflow](https://github.com/microsoft/AL-Go/assets/10775043/ec7f76b1-2eb9-42fe-91a3-c0170c796d3c)
+
+<Note>
+The initial run must be manual because the workflow was just added. Subsequent commits will automatically trigger the CI/CD workflow.
+</Note>
+
+</Step>
+
+<Step title="Monitor the Workflow Execution">
+
+Open the running workflow to view status and summary. Wait for the build to complete.
+
+![Workflow Success](https://github.com/microsoft/AL-Go/assets/10775043/8a1fcd6d-0a8d-4bbc-bb97-51a4c48e537a)
+
+Scroll down to review:
+- **Artifacts** - Built app files
+- **Test Results** - Automated test execution results
+
+![Test Results](https://github.com/microsoft/AL-Go/assets/10775043/7267a1a7-7afe-495f-8100-474fb8db9499)
+
+</Step>
+
+<Step title="Verify Complete History Preservation">
+
+Navigate to **Code** and click **Commits** to verify that your complete commit history has been preserved.
+
+![Complete History](https://github.com/microsoft/AL-Go/assets/10775043/c10ea3b3-2b1b-486d-9727-6b91b7bc3834)
+
+<Note>
+You should see all commits from your Azure DevOps repository, plus the new commit(s) adding AL-Go workflows.
+</Note>
+
+</Step>
+
+</Steps>
+
+## Benefits of Preserving History
+
+Migrating with history provides several advantages:
+
+<CardGroup cols={2}>
+  <Card title="Complete Audit Trail" icon="clock-rotate-left">
+    Maintain full accountability with every change tracked
+  </Card>
+  <Card title="Blame Information" icon="magnifying-glass">
+    Use git blame to identify when and why code was changed
+  </Card>
+  <Card title="Historical Context" icon="book">
+    Understand the evolution of your codebase over time
+  </Card>
+  <Card title="Regulatory Compliance" icon="shield-check">
+    Meet compliance requirements for change documentation
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+After successfully migrating your repository:
+
+<CardGroup cols={2}>
+  <Card title="Configure Environments" icon="server">
+    Set up deployment environments for your applications
+  </Card>
+  <Card title="Set Up Continuous Deployment" icon="rocket">
+    Configure automatic deployments to your environments
+  </Card>
+  <Card title="Migrate Azure Pipelines Variables" icon="gear">
+    Transfer any pipeline variables to GitHub secrets or settings
+  </Card>
+  <Card title="Update Documentation" icon="file-lines">
+    Update any references from Azure DevOps to GitHub
+  </Card>
+</CardGroup>
+
+## When to Use This Method
+
+This migration approach is ideal when:
+
+- You need to preserve complete commit history
+- Regulatory compliance requires full audit trails
+- You want to maintain git blame functionality
+- You're migrating a mature, long-running project
+- Historical context is important for your team
+
+<Warning>
+If you don't need commit history, the [migration without history](/migration/from-azure-devops) method is simpler and creates a cleaner starting point.
+</Warning>
+
+## Troubleshooting
+
+### Import Fails with Authentication Error
+
+If the import fails:
+
+1. Verify you copied the correct password from Azure DevOps
+2. Ensure your Azure DevOps credentials haven't expired
+3. Check that you have read access to the Azure DevOps repository
+4. Try regenerating the Git credentials in Azure DevOps
+
+### Workflow Doesn't Appear
+
+If the CI/CD workflow doesn't appear in Actions:
+
+1. Verify the `.github/workflows` folder was copied correctly
+2. Check that workflow YAML files are present
+3. Ensure GitHub Actions are enabled in repository settings
+4. Refresh the Actions page
+
+### Build Fails on First Run
+
+If the initial build fails:
+
+1. Verify `appFolders` and `testFolders` settings are correct
+2. Check that all required secrets are configured
+3. Review workflow logs for specific error messages
+4. Ensure app.json files are valid
+5. Verify dependencies are correctly specified
+
+### Missing Branches or Tags
+
+If branches or tags are missing:
+
+1. Verify they existed in Azure DevOps before import
+2. Check that the import completed successfully
+3. Try importing again if necessary
+4. Contact GitHub support if issues persist
+
+## Comparison with Migration Without History
+
+| Aspect | With History | Without History |
+|--------|-------------|----------------|
+| **Complexity** | Moderate | Simple |
+| **Time Required** | Longer (depends on repo size) | Quick |
+| **Commit History** | Fully preserved | Only new commits |
+| **Git Blame** | Works for all files | Only for new changes |
+| **Repository Size** | Larger (includes history) | Smaller (fresh start) |
+| **Best For** | Production apps, compliance needs | New projects, fresh starts |

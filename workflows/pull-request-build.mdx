@@ -1,0 +1,349 @@
+---
+title: Pull Request Build
+description: Automated build and validation workflow for pull requests in AL-Go for GitHub
+---
+
+The Pull Request Build workflow automatically validates changes in pull requests before they're merged into your main branch. It ensures code quality and prevents breaking changes from entering your codebase.
+
+## Overview
+
+This workflow runs automatically on:
+- **Pull requests** targeting the `main` branch
+- **Merge queue** events (when using GitHub merge queues)
+
+The workflow builds and tests all affected projects, runs code analysis, and provides immediate feedback on the pull request.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Fast Feedback" icon="gauge-high">
+    Provides quick validation results on pull requests without deploying to environments.
+  </Card>
+
+  <Card title="Concurrency Control" icon="layer-group">
+    Automatically cancels in-progress runs when new commits are pushed to the PR.
+  </Card>
+
+  <Card title="Code Scanning" icon="shield-halved">
+    Uploads code analysis results directly to the pull request for inline review.
+  </Card>
+
+  <Card title="Short-lived Artifacts" icon="clock">
+    Retains build artifacts for a shorter period to save storage costs.
+  </Card>
+</CardGroup>
+
+## Workflow Jobs
+
+<Steps>
+  <Step title="Pregate Check">
+    Verifies pull request changes when coming from forked repositories.
+
+    **Security Check:**
+    - Validates that PRs from external forks don't contain malicious changes
+    - Uses the `VerifyPRChanges` action for security scanning
+    - Only runs for cross-repository pull requests
+
+    <Warning>
+      This is a critical security step. Do not remove or bypass this check.
+    </Warning>
+  </Step>
+
+  <Step title="Initialization">
+    Prepares the build environment and determines what to build.
+
+    **Actions Performed:**
+    - Checks out the PR merge commit
+    - Initializes AL-Go workflow
+    - Reads repository and project settings
+    - Determines which projects need to be built
+    - Calculates build order based on dependencies
+    - Sets artifact retention period (shorter than CI/CD builds)
+  </Step>
+
+  <Step title="Build">
+    Compiles all affected AL projects.
+
+    **Build Characteristics:**
+    - Builds on the PR merge commit (simulates merged state)
+    - Runs in a matrix for multiple projects and build modes
+    - Executes all tests
+    - Performs code analysis
+    - Does NOT sign artifacts (faster builds)
+    - Uses artifact cache for performance
+    - Validates against baseline from target branch
+
+    Artifacts are named with the PR number (e.g., `MyProject-Default-Apps-PR123`).
+  </Step>
+
+  <Step title="Code Analysis Upload">
+    Processes and uploads code analysis results to GitHub.
+
+    **Features:**
+    - Downloads error logs from build artifacts
+    - Converts AL compiler output to SARIF format
+    - Uploads to GitHub Code Scanning
+    - Shows inline annotations on the pull request
+
+    <Note>
+      Code analysis results appear directly in the **Files changed** tab of your pull request.
+    </Note>
+  </Step>
+
+  <Step title="Status Check">
+    Validates the overall pull request status.
+
+    This final job:
+    - Checks if all required builds succeeded
+    - Provides a single status check for branch protection rules
+    - Posts workflow telemetry
+    - Always runs, even if previous jobs fail
+  </Step>
+</Steps>
+
+## Concurrency Management
+
+The workflow uses concurrency controls to optimize resource usage:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'merge_group' && github.run_id || github.event.pull_request.number }}
+  cancel-in-progress: true
+```
+
+**How it works:**
+- Each PR has its own concurrency group
+- New commits automatically cancel in-progress builds
+- Saves runner time and provides faster feedback
+
+<Note>
+  When you push new commits to a PR, the old build is automatically cancelled and a new build starts.
+</Note>
+
+## Differences from CI/CD Workflow
+
+The Pull Request Build workflow is optimized for speed and feedback:
+
+| Feature | Pull Request Build | CI/CD |
+|---------|-------------------|-------|
+| **Trigger** | Pull requests | Push to main/release branches |
+| **Artifact Signing** | No | Yes |
+| **Deployment** | No | Yes (to configured environments) |
+| **Delivery** | No | Yes (NuGet, Storage, etc.) |
+| **Artifact Retention** | Short (e.g., 7 days) | Longer (e.g., 90 days) |
+| **Reference Docs** | No | Yes (on main branch) |
+| **Concurrency** | Cancel in-progress | Run all |
+
+## Configuration
+
+### Artifact Retention
+
+Control how long PR artifacts are kept:
+
+In `.github/AL-Go-Settings.json`:
+
+```json
+{
+  "shortLivedArtifactsRetentionDays": 7
+}
+```
+
+<Note>
+  Default is typically 7 days for PR artifacts vs. 90 days for CI/CD artifacts.
+</Note>
+
+### Code Analysis
+
+Enable inline code analysis on pull requests:
+
+```json
+{
+  "trackALAlertsInGitHub": true
+}
+```
+
+When enabled:
+- Compiler warnings appear as annotations on changed files
+- Code scanning alerts show in the Security tab
+- Reviewers can see issues directly in the PR
+
+### Build Matrix
+
+The workflow automatically determines which projects to build based on:
+- Changed files in the pull request
+- Project dependencies
+- Workflow depth setting
+
+## Workflow Permissions
+
+Required permissions for the workflow:
+
+```yaml
+permissions:
+  actions: read          # Read workflow artifacts
+  contents: read         # Read repository content
+  id-token: write        # OIDC token for authentication
+  pull-requests: read    # Read PR information
+  security-events: write # Upload code scanning results
+  packages: read         # Access GitHub Packages
+```
+
+<Warning>
+  Do not reduce these permissions as they are required for proper workflow operation.
+</Warning>
+
+## Using with Branch Protection
+
+Integrate the Pull Request Build with GitHub branch protection:
+
+<Steps>
+  <Step title="Navigate to Branch Protection">
+    Go to **Settings** → **Branches** → **Branch protection rules**
+  </Step>
+
+  <Step title="Add Rule for Main">
+    Create or edit the rule for your `main` branch.
+  </Step>
+
+  <Step title="Require Status Checks">
+    Enable **Require status checks to pass before merging**
+    
+    Select the status check:
+    - **Pull Request Status Check**
+  </Step>
+
+  <Step title="Optional: Require Code Analysis">
+    Enable **Require code scanning results** if using code analysis.
+  </Step>
+</Steps>
+
+## Code Analysis Results
+
+When code analysis is enabled, you'll see:
+
+### In Pull Request Files Tab
+
+- **Inline annotations** on changed lines with issues
+- **Severity levels**: Error, Warning, Info
+- **Quick links** to AL documentation for code cops
+
+### In Security Tab
+
+- **All issues** from the build (not just changed lines)
+- **Historical trends** across builds
+- **Issue tracking** and resolution status
+
+<Note>
+  Code analysis results are posted to the PR head commit, ensuring they align with the exact code being reviewed.
+</Note>
+
+## Build Artifacts
+
+PR builds generate artifacts with special naming:
+
+- **Format**: `{ProjectName}-{BuildMode}-{ArtifactType}-PR{PRNumber}`
+- **Example**: `MyApp-Default-Apps-PR42`
+
+**Artifact Types:**
+- `Apps`: Compiled application files
+- `TestApps`: Test application files
+- `ErrorLogs`: Compilation and test error logs
+- `BuildOutput`: Build logs and metadata
+
+<Note>
+  Artifacts are automatically cleaned up after the retention period expires.
+</Note>
+
+## Testing Pull Requests
+
+### Automated Testing
+
+The workflow automatically:
+1. Runs all test codeunits in test apps
+2. Collects test results in JUnit XML format
+3. Reports failures in the workflow summary
+4. Uploads test results as artifacts
+
+### Manual Testing
+
+To manually test PR artifacts:
+
+<Steps>
+  <Step title="Download Artifacts">
+    Go to the workflow run and download the app artifacts.
+  </Step>
+
+  <Step title="Install in Test Environment">
+    Use the artifacts to install in your local or test environment:
+
+    ```powershell
+    Publish-BcContainerApp -containerName mycontainer `
+      -appFile "MyApp-Default-Apps-PR42.app" `
+      -skipVerification
+    ```
+  </Step>
+
+  <Step title="Validate Changes">
+    Test the functionality manually in your environment.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<CardGroup cols={2}>
+  <Card title="Build Fails on PR but Not Locally" icon="code-compare">
+    Ensure you're testing the merge commit, not just your branch. The PR build tests the result of merging into the target branch.
+  </Card>
+
+  <Card title="Code Analysis Not Showing" icon="eye-slash">
+    Verify that `trackALAlertsInGitHub` is enabled and the workflow has `security-events: write` permission.
+  </Card>
+
+  <Card title="Cancelled Builds" icon="ban">
+    This is normal behavior. Each new commit cancels the previous build to save resources.
+  </Card>
+
+  <Card title="Pregate Check Fails" icon="shield-xmark">
+    The PR may contain unauthorized changes to critical files. Review the VerifyPRChanges action output for details.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Keep PRs Small">
+    Smaller pull requests build faster and are easier to review. Aim for focused changes.
+  </Step>
+
+  <Step title="Wait for Builds">
+    Always wait for the PR build to complete before merging. Don't bypass status checks.
+  </Step>
+
+  <Step title="Review Code Analysis">
+    Address code analysis warnings before merging. They help maintain code quality.
+  </Step>
+
+  <Step title="Test Locally First">
+    Run builds and tests locally before pushing to reduce workflow runs.
+  </Step>
+</Steps>
+
+## Example Workflow
+
+A typical pull request workflow:
+
+1. **Developer creates PR** from feature branch to main
+2. **PR Build triggers** automatically
+3. **Pregate check** validates the PR (if from fork)
+4. **Projects are determined** based on changed files
+5. **Build runs** on the merge commit
+6. **Tests execute** and results are reported
+7. **Code analysis** uploads issues to PR
+8. **Status check** reports overall result
+9. **Developer addresses** any issues
+10. **Reviewer approves** after build succeeds
+11. **PR is merged** into main
+
+<Note>
+  The Pull Request Build typically completes faster than CI/CD builds since it skips signing, deployment, and delivery steps.
+</Note>

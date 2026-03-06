@@ -1,0 +1,486 @@
+---
+title: Basic Repository Settings
+description: Repository-level settings that apply to all projects in AL-Go for GitHub
+---
+
+Basic repository settings are configured in `.github/AL-Go-settings.json` and apply to all projects in the repository. These settings control repository-wide behavior like project type, GitHub runners, and deployment environments.
+
+## Repository Type
+
+<ParamField path="type" type="string" default="PTE">
+  Specifies the type of repository.
+  
+  **Allowed values:**
+  - `PTE` - Per-Tenant Extension
+  - `AppSource App` - AppSource application
+  
+  This value comes with the default repository and affects which code cops are enabled by default.
+  
+  **Example:**
+  ```json
+  {
+    "type": "AppSource App"
+  }
+  ```
+</ParamField>
+
+## Project Configuration
+
+<ParamField path="projects" type="array">
+  Specifies the list of projects in this repository (names of folders containing AL-Go projects).
+  
+  If not specified, AL-Go will enumerate folders in the two levels under the repository root for folders containing a `.AL-Go` folder with a `settings.json` file.
+  
+  **Example:**
+  ```json
+  {
+    "projects": [
+      "CoreApp",
+      "Extensions/AdvancedFeatures"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="useProjectDependencies" type="boolean" default={false}>
+  Determines whether projects are built using multi-stage or single-stage build workflows.
+  
+  When set to true:
+  - Workflows will have multiple build jobs depending on project dependencies
+  - Number of build jobs is determined by dependency depth
+  - You need to run "Update AL-Go System Files" for changes to take effect
+  
+  <Warning>
+  If the dependency depth changes, AL-Go will warn you that updates are available and you'll need to run the "Update AL-Go System Files" workflow.
+  </Warning>
+  
+  **Example:**
+  ```json
+  {
+    "useProjectDependencies": true
+  }
+  ```
+</ParamField>
+
+## Power Platform Integration
+
+<ParamField path="powerPlatformSolutionFolder" type="string">
+  Contains the name of the folder containing a Power Platform Solution (only one supported).
+  
+  **Example:**
+  ```json
+  {
+    "powerPlatformSolutionFolder": "PowerPlatform/MySolution"
+  }
+  ```
+</ParamField>
+
+## Template Configuration
+
+<ParamField path="templateUrl" type="string">
+  Defines the URL of the template repository used to create this repository.
+  
+  Used for checking and downloading updates to AL-Go System files.
+  
+  **Example:**
+  ```json
+  {
+    "templateUrl": "https://github.com/microsoft/AL-Go-PTE@main"
+  }
+  ```
+</ParamField>
+
+## GitHub Runners
+
+<ParamField path="runs-on" type="string" default="windows-latest">
+  Specifies which GitHub runner is used for all non-build/test jobs in all workflows (except "Update AL-Go System Files").
+  
+  After changing this setting, run "Update AL-Go System Files" for it to take effect.
+  
+  <Note>
+  Setting to `ubuntu-latest` runs non-build/test jobs on Linux. Build jobs still run on `windows-latest` (or your `githubRunner` setting).
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "runs-on": "ubuntu-latest"
+  }
+  ```
+</ParamField>
+
+<ParamField path="githubRunner" type="string" default="windows-latest">
+  Specifies which GitHub runner is used for build/test jobs in workflows.
+  
+  This is the most time-consuming task. Takes precedence over `runs-on` so you can use different runners for build jobs and housekeeping jobs.
+  
+  **Example:**
+  ```json
+  {
+    "githubRunner": "windows-latest"
+  }
+  ```
+  
+  See also: [Self-Hosted GitHub Runners](https://aka.ms/algosettings#runs-on)
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Specifies which shell is used as the default in all jobs.
+  
+  - `powershell` - PowerShell 5.1 (default on Windows)
+  - `pwsh` - PowerShell 7 (default on Ubuntu)
+  
+  If `runs-on` is set to `ubuntu-latest`, `pwsh` is used automatically.
+  
+  **Example:**
+  ```json
+  {
+    "shell": "pwsh"
+  }
+  ```
+</ParamField>
+
+<ParamField path="githubRunnerShell" type="string">
+  Specifies which shell is used for build jobs in workflows.
+  
+  Defaults to the same as `shell`. If `shell` isn't defined, `powershell` is the default.
+  
+  **Example:**
+  ```json
+  {
+    "githubRunnerShell": "pwsh"
+  }
+  ```
+</ParamField>
+
+## Environment and Deployment Settings
+
+<ParamField path="environments" type="array" default={[]}>
+  Array of logical environment names for deployment.
+  
+  Environments can be specified in GitHub environments or in the repo settings file. If specified in settings, create AUTHCONTEXT secret using `<environmentname>_AUTHCONTEXT`.
+  
+  Additional environment information can be specified in `DeployTo<environmentname>` settings.
+  
+  **Example:**
+  ```json
+  {
+    "environments": [
+      "Development",
+      "QA",
+      "Production"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="DeployTo<environmentname>" type="object">
+  Structure with additional properties for the specified environment. `<environmentName>` refers to the GitHub environment name.
+  
+  **Properties:**
+  - **EnvironmentType** - Type of environment (default: SaaS)
+  - **EnvironmentName** - "Real" name if different from GitHub environment
+  - **Branches** - Array of branch patterns allowed to deploy
+  - **Projects** - Comma-separated list of project patterns (default: *)
+  - **DependencyInstallMode** - install/ignore/upgrade/forceUpgrade (default: install)
+  - **includeTestAppsInSandboxEnvironment** - Deploy test apps if environment is sandbox (default: false)
+  - **excludeAppIds** - Array of app IDs to exclude from deployment (default: [])
+  - **Scope** - Dev or PTE deployment scope
+  - **SyncMode** - Add/ForceSync/Development/Clean (default: Add)
+  - **BuildMode** - Specifies which buildMode to use for deployment
+  - **ContinuousDeployment** - Enable continuous deployment (default: false)
+  - **runs-on** - GitHub runner for deployment (default: from general settings)
+  - **shell** - Shell for deployment (default: from general settings)
+  
+  **Example:**
+  ```json
+  {
+    "DeployToProduction": {
+      "EnvironmentType": "SaaS",
+      "Branches": ["main"],
+      "Projects": "*",
+      "SyncMode": "Add",
+      "ContinuousDeployment": false
+    }
+  }
+  ```
+</ParamField>
+
+<ParamField path="DeliverTo<deliveryTarget>" type="object">
+  Structure with additional properties for the delivery target specified.
+  
+  **Properties:**
+  - **Branches** - Array of branch patterns allowed to deliver (default: main)
+  - **CreateContainerIfNotExist** - *[Storage only]* Create blob container if it doesn't exist (default: false)
+  
+  **Example:**
+  ```json
+  {
+    "DeliverToStorage": {
+      "Branches": ["main", "release/*"],
+      "CreateContainerIfNotExist": true
+    }
+  }
+  ```
+</ParamField>
+
+## Workflow Triggers
+
+<ParamField path="CICDPushBranches" type="array" default={["main", "release/*", "feature/*"]}>
+  Array of branches that trigger a CI/CD workflow on commit.
+  
+  Run "Update AL-Go System Files" for changes to take effect.
+  
+  **Supported release branch formats:**
+  - `releases/26`, `releases/26.x`, `releases/26x`, `releases/v26`, `releases/v26.x`, `releases/v26x` - matches major version 26
+  - `releases/26.3` - matches major.minor version 26.3
+  - Also works with singular `release/` prefix
+  
+  **Example:**
+  ```json
+  {
+    "CICDPushBranches": [
+      "main",
+      "release/*",
+      "feature/*",
+      "hotfix/*"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="CICDPullRequestBranches" type="array" default={["main"]}>
+  Array of branch patterns that trigger Pull Request Build when a PR targets them.
+  
+  Run "Update AL-Go System Files" for changes to take effect.
+  
+  **Example:**
+  ```json
+  {
+    "CICDPullRequestBranches": [
+      "main",
+      "release/*"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="pullRequestTrigger" type="string" default="pull_request">
+  Specifies the trigger AL-Go uses for Pull Request Builds.
+  
+  - `pull_request` - Default, secrets not available for fork PRs
+  - `pull_request_target` - Secrets available but has [security implications](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target)
+  
+  Run "Update AL-Go System Files" for changes to take effect.
+  
+  **Example:**
+  ```json
+  {
+    "pullRequestTrigger": "pull_request"
+  }
+  ```
+</ParamField>
+
+## Build Configuration
+
+<ParamField path="buildModes" type="array" default={["Default"]}>
+  List of build modes to use when building AL-Go projects. Every project is built using each build mode.
+  
+  **Special build modes:**
+  - **Default** - Apps compiled as they are in source code
+  - **Clean** - For Clean Mode (use conditional settings to specify preprocessorSymbols)
+  - **Translated** - `TranslationFile` compiler feature is enabled
+  
+  Custom build modes can be specified and configured using conditional settings.
+  
+  **Example:**
+  ```json
+  {
+    "buildModes": [
+      "Default",
+      "Clean",
+      "Translated"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="fullBuildPatterns" type="array" default={[]}>
+  List of important files and folders. Changes to these trigger a full Pull Request build (all projects built).
+  
+  **Examples:**
+  - `[ "Build/*" ]` - Changes to Build folder trigger full build
+  - `[ "*" ]` - Any changes trigger full build (equivalent to `alwaysBuildAllProjects: true`)
+  
+  **Example:**
+  ```json
+  {
+    "fullBuildPatterns": [
+      "Build/*",
+      ".github/*",
+      "*.json"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="incrementalBuilds" type="object">
+  Structure defining incremental build configuration. AL-Go looks for the latest successful CI/CD build newer than `retentionDays` and only rebuilds changed projects/apps.
+  
+  **Properties:**
+  - **onPush** - Enable for CI/CD triggered by merge/push (default: false)
+  - **onPull_Request** - Enable for Pull Requests (default: true)
+  - **onSchedule** - Enable for scheduled CI/CD (default: false)
+  - **retentionDays** - Days a successful build is valid (default: 30)
+  - **mode** - `modifiedProjects` or `modifiedApps`
+  
+  <Note>
+  When using incremental builds, it's recommended to also set `workflowConcurrency` for the CI/CD workflow.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "incrementalBuilds": {
+      "onPush": true,
+      "onPull_Request": true,
+      "onSchedule": false,
+      "retentionDays": 30,
+      "mode": "modifiedProjects"
+    }
+  }
+  ```
+</ParamField>
+
+## Git Submodules
+
+<ParamField path="useGitSubmodules" type="string">
+  Set to `"true"` or `"recursive"` to use Git Submodules during build workflows.
+  
+  If submodules reside in private repositories, define a `gitSubmodulesToken` secret.
+  
+  **Example:**
+  ```json
+  {
+    "useGitSubmodules": "recursive"
+  }
+  ```
+</ParamField>
+
+## Commit and Pull Request Options
+
+<ParamField path="commitOptions" type="object">
+  Controls how AL-Go creates pull requests or commits changes to the repository.
+  
+  **Properties:**
+  - **messageSuffix** - String appended to commits/PRs (useful for Azure Boards integration)
+  - **createPullRequest** - Boolean: create PR or push directly to branch
+  - **pullRequestAutoMerge** - Boolean: auto-complete PRs when checks pass
+  - **pullRequestMergeMethod** - "merge" or "squash" (default: squash)
+  - **pullRequestLabels** - Array of labels to add to PR (must exist in repo)
+  
+  Can be set in workflow-specific settings files for different behavior per workflow.
+  
+  **Example:**
+  ```json
+  {
+    "commitOptions": {
+      "messageSuffix": "AB#12345",
+      "createPullRequest": true,
+      "pullRequestAutoMerge": true,
+      "pullRequestMergeMethod": "squash",
+      "pullRequestLabels": ["automated", "al-go"]
+    }
+  }
+  ```
+</ParamField>
+
+## Reference Documentation
+
+<ParamField path="alDoc" type="object">
+  Structure for ALDoc reference documentation generation.
+  
+  **Properties:**
+  - **continuousDeployment** - Deploy reference docs continuously in CI/CD (default: false)
+  - **deployToGitHubPages** - Deploy to GitHub Pages (default: true)
+  - **maxReleases** - Maximum releases to include (default: 3)
+  - **groupByProject** - Use projects as folders in multi-project repos
+  - **includeProjects** - Array of projects to include (default: all)
+  - **excludeProjects** - Array of projects to exclude (default: none)
+  - **header** - Header for documentation site
+  - **footer** - Footer for documentation site
+  - **defaultIndexMD** - Markdown for landing page
+  - **defaultReleaseMD** - Markdown for release sites
+  
+  Placeholders: {REPOSITORY}, {VERSION}, {INDEXTEMPLATERELATIVEPATH}, {RELEASENOTES}
+  
+  **Example:**
+  ```json
+  {
+    "alDoc": {
+      "continuousDeployment": false,
+      "deployToGitHubPages": true,
+      "maxReleases": 5,
+      "groupByProject": true,
+      "header": "Documentation for {REPOSITORY}",
+      "footer": "Made with ALDoc"
+    }
+  }
+  ```
+</ParamField>
+
+## Artifact Retention
+
+<ParamField path="shortLivedArtifactsRetentionDays" type="integer" default={1}>
+  Number of days to keep short-lived build artifacts (e.g., from pull request builds, next minor/major builds).
+  
+  Set to 0 to use GitHub default.
+  
+  **Example:**
+  ```json
+  {
+    "shortLivedArtifactsRetentionDays": 7
+  }
+  ```
+</ParamField>
+
+## Environment Exclusions
+
+<ParamField path="excludeEnvironments" type="array" default={[]}>
+  Array of GitHub Environments to exclude from deployment consideration.
+  
+  `github-pages` is automatically added and cannot be used for deployment.
+  
+  **Example:**
+  ```json
+  {
+    "excludeEnvironments": [
+      "test-environment",
+      "deprecated-env"
+    ]
+  }
+  ```
+</ParamField>
+
+## Update AL-Go System Files
+
+<ParamField path="updateALGoSystemFilesEnvironment" type="string">
+  Name of the environment holding the `GhTokenWorkflow` secret.
+  
+  Allows guarding "Update AL-Go System Files" with an approval workflow.
+  
+  Run "Update AL-Go System Files" (with GhTokenWorkflow in place globally) for this setting to take effect.
+  
+  **Example:**
+  ```json
+  {
+    "updateALGoSystemFilesEnvironment": "ALGoSystemUpdates"
+  }
+  ```
+</ParamField>
+
+## Related Settings
+
+For project-level settings, see [Basic Project Settings](/settings/basic-project).
+
+For advanced configuration options, see [Advanced Settings](/settings/advanced).

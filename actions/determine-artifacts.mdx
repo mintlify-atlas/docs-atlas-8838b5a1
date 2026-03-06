@@ -1,0 +1,50 @@
+---
+title: Determine Artifact URL
+description: Determine the artifact URL for AL-Go workflows
+---
+
+The **Determine Artifact URL** action (DetermineArtifactUrl) determines the appropriate artifact URL to use for building and testing Business Central apps.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/DetermineArtifactUrl@main
+  with:
+    project: '.'
+```
+
+## Inputs
+
+<ParamField path="project" type="string" default=".">
+  Project folder to determine artifact URL for. Use `.` for the root project.
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action. Options: `powershell` or `pwsh`.
+</ParamField>
+
+## Example
+
+Determine artifact URL in a build workflow:
+
+```yaml
+name: Build
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine Artifacts
+        uses: microsoft/AL-Go/Actions/DetermineArtifactUrl@main
+        with:
+          project: '.'
+```
+
+<Note>
+  This action analyzes your project settings and determines the correct Business Central artifact URL based on your configuration, such as version, country, and other project-specific settings.
+</Note>

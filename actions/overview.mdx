@@ -1,0 +1,105 @@
+---
+title: Actions Overview
+description: Understanding AL-Go for GitHub composite actions and how they work
+---
+
+# Actions Overview
+
+AL-Go for GitHub provides a collection of reusable composite actions that handle common tasks in Business Central development workflows. These actions are the building blocks that power AL-Go workflows, handling everything from settings management to pipeline execution.
+
+## What are AL-Go Actions?
+
+AL-Go actions are GitHub composite actions that encapsulate complex PowerShell logic into reusable, configurable components. Each action is designed to perform a specific task within the AL-Go automation framework, such as:
+
+- Reading and processing repository settings
+- Managing secrets and authentication tokens
+- Running build and test pipelines
+- Checking for and applying system updates
+
+All actions are implemented as composite actions that invoke PowerShell scripts through the `Invoke-AlGoAction.ps1` wrapper, which provides consistent error handling and logging across the framework.
+
+## How Actions Work
+
+Each AL-Go action follows a standard pattern:
+
+1. **Input Processing**: Actions accept inputs through GitHub Actions parameters, with sensible defaults for most values
+2. **Environment Setup**: The action sets up environment variables from inputs to ensure proper parameter handling
+3. **Script Execution**: The main PowerShell script is invoked through the `Invoke-AlGoAction.ps1` wrapper
+4. **Output Generation**: Actions produce outputs as environment variables or GitHub Actions outputs for use in subsequent steps
+
+<Note>
+All AL-Go actions support both `powershell` and `pwsh` shells, allowing you to choose the PowerShell version that best fits your environment.
+</Note>
+
+## Common Features
+
+All AL-Go actions share these common characteristics:
+
+### Shell Selection
+
+Every action includes a `shell` input parameter that allows you to specify whether to run PowerShell scripts using:
+- `powershell` (Windows PowerShell 5.1) - Default
+- `pwsh` (PowerShell 7+)
+
+### Consistent Branding
+
+Actions use consistent GitHub branding:
+- Icon: terminal
+- Color: blue
+
+### Author
+
+All actions are authored and maintained by Microsoft Corporation.
+
+## Available Actions
+
+<CardGroup cols={2}>
+  <Card title="Run Pipeline" icon="play" href="/actions/run-pipeline">
+    Execute build and test pipelines for AL-Go projects with support for artifacts, baselines, and custom build modes.
+  </Card>
+  
+  <Card title="Read Settings" icon="gear" href="/actions/read-settings">
+    Read and process AL-Go settings from repository and project configuration files.
+  </Card>
+  
+  <Card title="Read Secrets" icon="key" href="/actions/read-secrets">
+    Retrieve and manage secrets from GitHub Secrets or Azure Key Vault for use in workflows.
+  </Card>
+  
+  <Card title="Check For Updates" icon="arrows-rotate" href="/actions/check-for-updates">
+    Check for updates to AL-Go system files and optionally apply them to your repository.
+  </Card>
+</CardGroup>
+
+## Using Actions in Workflows
+
+To use an AL-Go action in your workflow, reference it using the standard GitHub Actions syntax:
+
+```yaml
+- uses: microsoft/AL-Go/Actions/ReadSettings@main
+  with:
+    shell: pwsh
+    project: '.'
+```
+
+<Warning>
+When using AL-Go actions, ensure you're referencing the correct version or branch. Using `@main` will always get the latest version, but may include breaking changes. Consider pinning to a specific release tag for production workflows.
+</Warning>
+
+## Action Dependencies
+
+Some actions depend on outputs from other actions:
+
+- **Run Pipeline** requires prior execution of both `ReadSettings` and `ReadSecrets`
+- **Read Secrets** requires prior execution of `ReadSettings`
+
+Always ensure you execute actions in the correct order within your workflow.
+
+## Next Steps
+
+Explore the detailed documentation for each action to understand their specific inputs, outputs, and use cases:
+
+- [Run Pipeline](/actions/run-pipeline) - Execute build and test pipelines
+- [Read Settings](/actions/read-settings) - Load configuration settings
+- [Read Secrets](/actions/read-secrets) - Manage secrets and tokens
+- [Check For Updates](/actions/check-for-updates) - Update AL-Go system files

@@ -1,0 +1,270 @@
+---
+title: Add a Performance Test App
+description: Learn how to add BCPT performance test apps to measure and monitor the performance of your Business Central applications
+---
+
+Performance test apps using the Business Central Performance Toolkit (BCPT) allow you to measure execution times, SQL statements, and other performance metrics. AL-Go automates BCPT test execution and provides detailed performance reports with baseline comparisons.
+
+## Prerequisites
+
+Before adding a performance test app:
+- Complete the basic AL-Go for GitHub setup
+- Understand BCPT framework basics
+- Have a working CI/CD pipeline
+
+## Create a Performance Test App
+
+<Steps>
+  <Step title="Run the Create Performance Test App workflow">
+    Navigate to **Actions** in your repository, select **Create a new performance test app**, then click **Run workflow**.
+
+    Provide the required information:
+    - **Name**: Name of your performance test app
+    - **Publisher**: Your publisher name  
+    - **ID Range**: Object ID range for the test app
+
+    Click **Run workflow** to create the performance test app.
+
+    <Note>
+      If workflows are not allowed to create pull requests due to GitHub organization settings, you can create the PR manually by following the link in the workflow annotation.
+    </Note>
+  </Step>
+
+  <Step title="Review and merge the pull request">
+    Once the workflow completes, navigate to **Pull Requests**.
+
+    Inspect the changes, which include:
+    - Performance test app structure
+    - Sample BCPT test codeunits
+    - BCPT suite configuration
+
+    **Merge the pull request** when ready.
+  </Step>
+
+  <Step title="Monitor the CI/CD workflow">
+    After merging, a **CI/CD workflow** automatically starts.
+
+    Navigate to **Actions** to watch the workflow execute. This workflow will:
+    - Build your apps and performance test app
+    - Run the BCPT tests
+    - Generate performance test results
+  </Step>
+
+  <Step title="Review BCPT test results">
+    When the workflow completes successfully, check the **build artifacts**.
+
+    You'll find **BCPT Test Results** as one of the artifacts. Download and open it to view:
+    - Execution duration for each test
+    - Number of SQL statements
+    - SQL read/write operations
+    - Performance metrics in JSON and table format
+  </Step>
+</Steps>
+
+## Understanding BCPT Results
+
+The BCPT Test Results artifact contains detailed performance data:
+
+```json
+{
+  "TestName": "Customer Lookup",
+  "Duration": 125,
+  "NumberOfSQLStatements": 8,
+  "NumberOfSQLReads": 15,
+  "NumberOfSQLWrites": 0
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="Duration" icon="clock">
+    Execution time in milliseconds for the test operation
+  </Card>
+
+  <Card title="SQL Statements" icon="database">
+    Total number of SQL statements executed during the test
+  </Card>
+
+  <Card title="SQL Reads" icon="book-open">
+    Number of database read operations performed
+  </Card>
+
+  <Card title="SQL Writes" icon="pen">
+    Number of database write operations performed
+  </Card>
+</CardGroup>
+
+## Set Up Performance Baselines
+
+To compare performance across builds, establish a baseline by uploading a `bcptBaseLine.json` file.
+
+<Steps>
+  <Step title="Get initial results">
+    After your first successful BCPT run, download the **BCPT Test Results** artifact.
+
+    The results viewer will indicate that you need to add a `bcptBaseLine.json` file to enable baseline comparison.
+  </Step>
+
+  <Step title="Create baseline file">
+    Use the results from your initial run to create `bcptBaseLine.json`.
+
+    Upload this file to your **project root** (the repository root for single-project repositories).
+
+    ```json
+    {
+      "TestName": "Customer Lookup",
+      "Duration": 125,
+      "NumberOfSQLStatements": 8,
+      "NumberOfSQLReads": 15,
+      "NumberOfSQLWrites": 0
+    }
+    ```
+  </Step>
+
+  <Step title="Run CI/CD with baseline">
+    Commit and push the `bcptBaseLine.json` file.
+
+    The next CI/CD workflow will compare new results against the baseline, showing:
+    - **Diff values** for each metric
+    - **Negative numbers** indicate improvements (faster execution, fewer SQL operations)
+    - **Positive numbers** indicate performance regression
+  </Step>
+</Steps>
+
+## Configure Performance Thresholds
+
+Set thresholds to automatically fail builds when performance degrades beyond acceptable levels.
+
+<Steps>
+  <Step title="Create thresholds file">
+    Create a `bcptThresholds.json` file in the same location as your baseline file (project root).
+
+    ```json
+    {
+      "durationWarning": 0,
+      "durationError": 1
+    }
+    ```
+
+    <Note>
+      You can also specify thresholds in project settings using the `bcptThresholds` setting. See [Settings Documentation](https://aka.ms/algosettings#bcptThresholds) for details.
+    </Note>
+  </Step>
+
+  <Step title="Understand threshold values">
+    Threshold values represent percentage changes from baseline:
+
+    - `durationWarning: 0` - Warns if duration increases at all
+    - `durationError: 1` - Fails if duration increases by more than 1%
+    - Similar thresholds can be set for SQL statements, reads, and writes
+  </Step>
+
+  <Step title="Test threshold enforcement">
+    Commit and push the `bcptThresholds.json` file.
+
+    The CI/CD workflow will now:
+    - Show **warnings** when performance crosses warning thresholds
+    - **Fail the build** when error thresholds are exceeded
+    - Display threshold violations in the workflow summary
+  </Step>
+</Steps>
+
+## BCPT Threshold Options
+
+You can configure multiple threshold types:
+
+```json
+{
+  "durationWarning": 5,
+  "durationError": 10,
+  "numberOfSQLStatementsWarning": 5,
+  "numberOfSQLStatementsError": 10,
+  "numberOfSQLReadsWarning": 5,
+  "numberOfSQLReadsError": 10,
+  "numberOfSQLWritesWarning": 5,
+  "numberOfSQLWritesError": 10
+}
+```
+
+## Best Practices
+
+### Choose Representative Tests
+
+<Warning>
+**Focus on critical scenarios**: Performance test the most important and frequently used features in your application, not every possible operation.
+</Warning>
+
+- Test common user workflows (e.g., creating sales orders, posting documents)
+- Include scenarios that access large datasets
+- Test operations known to be performance-sensitive
+- Consider testing during peak load conditions
+
+### Maintain Stable Baselines
+
+- Update baselines when you intentionally improve performance
+- Don't update baselines to hide regressions
+- Document why baselines changed in commit messages
+- Keep historical baselines for comparison
+
+### Set Realistic Thresholds
+
+```json
+{
+  "durationWarning": 5,     // Warn at 5% regression
+  "durationError": 15       // Fail at 15% regression
+}
+```
+
+- Start with lenient thresholds and tighten over time
+- Account for normal variation in test execution
+- Use warnings to catch trends before they become problems
+- Set error thresholds to prevent significant regressions
+
+### Monitor Trends
+
+<CardGroup cols={2}>
+  <Card title="Track Over Time" icon="chart-line">
+    Download and archive BCPT results from each build to identify performance trends across releases.
+  </Card>
+
+  <Card title="Compare Branches" icon="code-branch">
+    Run BCPT tests on feature branches to catch performance issues before merging.
+  </Card>
+
+  <Card title="Document Changes" icon="file-lines">
+    When performance characteristics change, document the reasons in release notes.
+  </Card>
+
+  <Card title="Investigate Anomalies" icon="magnifying-glass">
+    Sudden performance changes deserve investigation even if they don't breach thresholds.
+  </Card>
+</CardGroup>
+
+## Example BCPT Test
+
+```al
+codeunit 50100 "BCPT Customer Operations"
+{
+    // Simulates customer lookup and read operations
+    procedure RunCustomerLookup()
+    var
+        Customer: Record Customer;
+    begin
+        if Customer.FindSet() then
+            repeat
+                // Perform typical operations
+            until (Customer.Next() = 0);
+    end;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Add Test Apps" icon="flask" href="./add-test-app">
+    Create functional test apps to validate business logic
+  </Card>
+
+  <Card title="Development Environments" icon="code" href="./dev-environments">
+    Set up online development environments for rapid testing
+  </Card>
+</CardGroup>

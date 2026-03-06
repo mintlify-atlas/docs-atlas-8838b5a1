@@ -1,0 +1,228 @@
+---
+title: Create New AppSource Project
+description: Set up a new AppSource app project with AL-Go for GitHub from scratch
+---
+
+This guide walks you through creating a new AppSource app project using AL-Go for GitHub. AppSource apps have additional requirements compared to PTE projects, including code signing and AppSource compliance.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- A GitHub account
+- Experience with AL-Go for GitHub (complete the [PTE project setup](/setup/new-pte-project) first)
+- A valid code signing certificate (`.pfx` file) for AppSource submission
+- Partner Center account (for AppSource delivery)
+- Azure Key Vault (optional, for secret management)
+
+<Warning>
+  For AppSource apps targeting Business Central versions **prior to version 22**, you need a license file with permissions to your objects. For version 22 and later, the CRONUS license has sufficient rights for DevOps scenarios.
+</Warning>
+
+## Create Your Repository
+
+<Steps>
+  <Step title="Use the AL-Go AppSource template">
+    Navigate to [https://github.com/microsoft/AL-Go-AppSource](https://github.com/microsoft/AL-Go-AppSource) and choose **Use this template**.
+  </Step>
+
+  <Step title="Configure repository settings">
+    Enter a repository name (e.g., `app3`) and select **Create Repository from template**.
+  </Step>
+</Steps>
+
+## Add Your AppSource App Code
+
+You have two options for adding your app code:
+
+### Option 1: Create New App
+
+Use the **Create a new app** workflow to generate a new app structure, similar to the [PTE project setup](/setup/new-pte-project).
+
+### Option 2: Import Existing App
+
+If you're migrating from Azure DevOps or another source:
+
+<Steps>
+  <Step title="Prepare your source code">
+    1. Download your entire source code as a `.zip` file
+    2. Upload to a secure location (Dropbox, Azure Blob Storage, etc.)
+    3. Generate a secure download URL
+  </Step>
+
+  <Step title="Run the Add existing app workflow">
+    1. In your repository, go to **Actions**
+    2. Select **Add existing app or test app** workflow
+    3. Click **Run workflow**
+    4. Paste the secure download URL
+    5. Click **Run Workflow**
+  </Step>
+
+  <Step title="Complete the pull request">
+    When the workflow finishes, review and merge the pull request created by the workflow.
+  </Step>
+</Steps>
+
+## Configure AppSource Settings
+
+The first CI/CD build will fail with an error about missing AppSource settings. You need to configure these:
+
+<Steps>
+  <Step title="Set AppSource mandatory affixes">
+    Edit `.AL-Go/settings.json` and add:
+
+    ```json
+    {
+      "appSourceCopMandatoryAffixes": [ "YourPrefix" ]
+    }
+    ```
+
+    Replace `YourPrefix` with the affix(es) you want to enforce for your objects.
+  </Step>
+
+  <Step title="Configure license file (if required)">
+    For Business Central versions prior to 22, if your license file in Azure Key Vault has a different name than `LicenseFileUrl`:
+
+    ```json
+    {
+      "licenseFileUrlSecretName": "LicenseFile"
+    }
+    ```
+
+    <Note>
+      This setting creates an indirection, allowing AL-Go to look for a secret with a different name than the default.
+    </Note>
+  </Step>
+</Steps>
+
+## Set Up Code Signing
+
+AppSource apps must be code-signed. AL-Go supports multiple signing methods:
+
+### Method 1: Azure Trusted Signing (Recommended)
+
+Configure the `trustedSigning` setting in `.AL-Go/settings.json`:
+
+```json
+{
+  "trustedSigning": {
+    "Account": "your-signing-account",
+    "Endpoint": "https://weu.codesigning.azure.net",
+    "CertificateProfile": "your-certificate-profile"
+  }
+}
+```
+
+<Note>
+  Your `Azure_Credentials` secret needs the `Trusted Signing Certificate Profile Signer` role in the Trusted Signing Account.
+</Note>
+
+### Method 2: Certificate File (Legacy)
+
+Create two secrets in your repository or Azure Key Vault:
+
+- **CodeSignCertificateUrl**: Secure download URL to your `.pfx` file
+- **CodeSignCertificatePassword**: Password for the `.pfx` file
+
+If your secrets use different names, add indirection in `.AL-Go/settings.json`:
+
+```json
+{
+  "codeSignCertificateUrlSecretName": "myCodeSignCertUrl",
+  "codeSignCertificatePasswordSecretName": "myCodeSignCertPassword"
+}
+```
+
+### Method 3: Azure Key Vault Certificate
+
+Store your certificate directly in Azure Key Vault (requires Premium SKU):
+
+```json
+{
+  "keyVaultCodesignCertificateName": "your-certificate-name"
+}
+```
+
+## Configure AppSource Delivery
+
+To enable automatic delivery to AppSource, configure the `deliverToAppSource` setting:
+
+```json
+{
+  "deliverToAppSource": {
+    "productId": "your-product-id-from-partner-center",
+    "mainAppFolder": "MainApp",
+    "continuousDelivery": false,
+    "branches": ["main"],
+    "includeDependencies": ["*.app"]
+  }
+}
+```
+
+<Note>
+  You must create an `AppSourceContext` secret with Partner Center credentials. See the [Secrets documentation](/setup/secrets#appsourcecontext) for details.
+</Note>
+
+### AppSource Delivery Properties
+
+| Property | Description | Default |
+|----------|-------------|----------|
+| `productId` | Product ID from Partner Center | Required |
+| `mainAppFolder` | Folder containing the main app (if multiple apps) | - |
+| `continuousDelivery` | Auto-submit to AppSource validation on every build | `false` |
+| `branches` | Branch patterns allowed to deliver | `["main"]` |
+| `includeDependencies` | Dependency files to include in submission | `[]` |
+
+<Warning>
+  When using `continuousDelivery: true`, the app is submitted to AppSource validation but remains in preview. You must manually press **GO LIVE** in Partner Center to promote to production.
+</Warning>
+
+## Verify Your Setup
+
+After configuring all settings:
+
+<Steps>
+  <Step title="Commit changes">
+    Commit your settings changes to trigger a CI/CD build.
+  </Step>
+
+  <Step title="Monitor the pipeline">
+    Check the Actions tab to verify:
+    - AppSource Cop validation passes
+    - Apps are signed (look for the signing step in the pipeline)
+    - Build artifacts are created
+  </Step>
+
+  <Step title="Review build artifacts">
+    Download the build artifacts to verify they contain signed `.app` files.
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configure Settings" icon="gear" href="/setup/settings">
+    Learn about AppSource-specific settings and configurations
+  </Card>
+  <Card title="Manage Secrets" icon="key" href="/setup/secrets">
+    Set up Partner Center and Azure Key Vault authentication
+  </Card>
+  <Card title="Register Environments" icon="cloud" href="/workflows/environments">
+    Configure sandbox environments for testing
+  </Card>
+  <Card title="Create Releases" icon="rocket" href="/workflows/create-release">
+    Create releases and submit to AppSource
+  </Card>
+</CardGroup>
+
+## Obsolete Tag Validation
+
+For AppSource apps, you can enforce minimum obsolete tag versions:
+
+```json
+{
+  "obsoleteTagMinAllowedMajorMinor": "1.0"
+}
+```
+
+This enables AppSource Cop rule AS0105, preventing objects with obsolete tags below the specified version.

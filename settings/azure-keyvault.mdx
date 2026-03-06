@@ -1,0 +1,433 @@
+---
+title: Azure KeyVault Integration
+description: Use Azure KeyVault to manage secrets for AL-Go for GitHub
+---
+
+Azure KeyVault provides centralized, secure storage for secrets used by AL-Go for GitHub. Instead of storing secrets directly in GitHub, you can store them in Azure KeyVault and configure AL-Go to retrieve them automatically.
+
+## Benefits of Using Azure KeyVault
+
+<CardGroup cols={2}>
+  <Card title="Centralized Management" icon="server">
+    Manage all secrets in one place across multiple repositories
+  </Card>
+  <Card title="Enhanced Security" icon="shield">
+    Leverage Azure's security features and access controls
+  </Card>
+  <Card title="Audit Logging" icon="list">
+    Track secret access and modifications
+  </Card>
+  <Card title="Rotation Support" icon="rotate">
+    Easily rotate secrets without updating multiple repositories
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+Before setting up Azure KeyVault integration:
+
+<Steps>
+  <Step title="Azure KeyVault">
+    Have an Azure KeyVault created and configured
+  </Step>
+  <Step title="Verified Domain">
+    App registration name should use a verified domain of your organization
+  </Step>
+  <Step title="Premium SKU (Optional)">
+    For Hardware Security Modules or app signing, upgrade to Premium SKU KeyVault
+  </Step>
+</Steps>
+
+<Tip>
+Upgrade an existing KeyVault to Premium SKU:
+```bash
+az keyvault update --set properties.sku.name=premium --name <KeyVaultName> --resource-group <ResourceGroupName>
+```
+</Tip>
+
+## Setup Instructions
+
+### 1. Connect to Azure
+
+Follow the [Azure login action documentation](https://learn.microsoft.com/azure/developer/github/connect-from-azure?tabs=azure-portal%2Cwindows#use-the-azure-login-action-with-a-service-principal-secret) to set up the connection.
+
+### 2. Create Azure_Credentials Secret
+
+Add a compressed JSON construct as a repository secret called `AZURE_CREDENTIALS`:
+
+**Format:**
+```json
+{"keyVaultName":"{your-keyvault-name}","clientId":"<clientId>","clientSecret":"<clientSecret>","tenantId":"<tenantId>"}
+```
+
+<Note>
+You can also specify the KeyVault name in the AL-Go settings file instead of including it in the JSON construct.
+</Note>
+
+### 3. Configure KeyVault Name (Optional)
+
+Alternatively, add the KeyVault name to your settings file:
+
+**.github/AL-Go-settings.json:**
+```json
+{
+  "keyVaultName": "MyKeyVault"
+}
+```
+
+**Azure_Credentials (without keyVaultName):**
+```json
+{"clientId":"<clientId>","clientSecret":"<clientSecret>","tenantId":"<tenantId>"}
+```
+
+## Authentication Methods
+
+### Managed Identity (Recommended)
+
+Use Azure Managed Identity with federated credentials for the most secure setup:
+
+**Azure_Credentials:**
+```json
+{"keyVaultName":"MyKeyVault","clientId":"<clientId>","tenantId":"<tenantId>"}
+```
+
+**Setup:**
+<Steps>
+  <Step title="Create Managed Identity">
+    Create a managed identity in Azure
+  </Step>
+  <Step title="Configure Federated Credential">
+    Add federated credential for your GitHub repository
+  </Step>
+  <Step title="Grant Permissions">
+    Assign required KeyVault permissions (see below)
+  </Step>
+</Steps>
+
+### App Registration with Federated Credential
+
+**Azure_Credentials:**
+```json
+{"keyVaultName":"MyKeyVault","clientId":"<clientId>","tenantId":"<tenantId>"}
+```
+
+**Setup:**
+<Steps>
+  <Step title="Create App Registration">
+    Create an app registration in Azure AD
+  </Step>
+  <Step title="Add Federated Credential">
+    Under Certificates & Secrets, add federated credential for your GitHub repo
+  </Step>
+  <Step title="Grant Permissions">
+    Assign required KeyVault permissions
+  </Step>
+</Steps>
+
+### App Registration with Client Secret
+
+**Azure_Credentials:**
+```json
+{"keyVaultName":"MyKeyVault","clientId":"<clientId>","clientSecret":"<clientSecret>","tenantId":"<tenantId>"}
+```
+
+<Warning>
+Client secrets are less secure than federated credentials. Prefer managed identities or federated credentials when possible.
+</Warning>
+
+## KeyVault Permissions
+
+Configure permissions based on your KeyVault security model:
+
+### Role Based Access Control (RBAC) - Recommended
+
+Assign these roles to your managed identity or app registration:
+
+| Task | Required Role |
+|------|---------------|
+| Read Secrets | Key Vault Secrets User |
+| Sign Apps | Key Vault Crypto User + Key Vault Certificate User |
+
+**Assign roles:**
+<Steps>
+  <Step title="Navigate to KeyVault">
+    Go to your KeyVault in Azure Portal
+  </Step>
+  <Step title="Access Control (IAM)">
+    Select "Access control (IAM)" from the left menu
+  </Step>
+  <Step title="Add Role Assignment">
+    Click "Add" → "Add role assignment"
+  </Step>
+  <Step title="Select Role">
+    Choose the required role (e.g., "Key Vault Secrets User")
+  </Step>
+  <Step title="Assign to Identity">
+    Select your managed identity or app registration
+  </Step>
+</Steps>
+
+### Vault Access Policy
+
+Alternatively, use vault access policies:
+
+| Task | Required Permissions |
+|------|---------------------|
+| Read Secrets | Secret permissions: Get, List |
+| Sign Apps | Cryptographic Operations: Sign<br/>Certificate permissions: Get |
+
+**Configure access policy:**
+<Steps>
+  <Step title="Navigate to Access Policies">
+    Go to KeyVault → Access policies
+  </Step>
+  <Step title="Add Access Policy">
+    Click "Add Access Policy"
+  </Step>
+  <Step title="Select Permissions">
+    Choose required secret/certificate/key permissions
+  </Step>
+  <Step title="Select Principal">
+    Select your managed identity or app registration
+  </Step>
+  <Step title="Save">
+    Click "Add" then "Save"
+  </Step>
+</Steps>
+
+## Storing Secrets in KeyVault
+
+### 1. Add Secrets to KeyVault
+
+Add your AL-Go secrets to the KeyVault:
+
+**Example secrets:**
+- `authContext` - For environment deployment
+- `ghTokenWorkflow` - For updating AL-Go system files
+- `licenseFileUrl` - For Business Central license
+- `appSourceContext` - For AppSource delivery
+- Any other AL-Go secrets
+
+**Using Azure Portal:**
+<Steps>
+  <Step title="Navigate to Secrets">
+    Go to KeyVault → Secrets
+  </Step>
+  <Step title="Generate/Import">
+    Click "Generate/Import"
+  </Step>
+  <Step title="Enter Details">
+    Name: Secret name (e.g., "authContext")
+    Value: Secret value (compressed JSON if applicable)
+  </Step>
+  <Step title="Create">
+    Click "Create"
+  </Step>
+</Steps>
+
+**Using Azure CLI:**
+```bash
+az keyvault secret set --vault-name MyKeyVault --name authContext --value '{"tenantId":"...","scopes":"..."}'
+```
+
+### 2. Remove Secrets from GitHub
+
+After adding secrets to KeyVault, remove them from GitHub repository secrets and environment secrets.
+
+<Warning>
+Keep the `Azure_Credentials` secret in GitHub - it's needed to access the KeyVault.
+</Warning>
+
+## Testing the Configuration
+
+### Test Secret Access
+
+<Steps>
+  <Step title="Run CI/CD Pipeline">
+    Trigger a CI/CD workflow to test secret retrieval
+  </Step>
+  <Step title="Check Workflow Logs">
+    Verify that secrets are being read from KeyVault
+  </Step>
+  <Step title="Test Deployment">
+    Run a deployment to ensure authContext is retrieved correctly
+  </Step>
+  <Step title="Test System Update">
+    Run "Update AL-Go System Files" to verify ghTokenWorkflow access
+  </Step>
+</Steps>
+
+## App Signing with KeyVault
+
+To use KeyVault for app signing:
+
+### 1. Import Certificate to KeyVault
+
+**Using Azure Portal:**
+<Steps>
+  <Step title="Navigate to Certificates">
+    Go to KeyVault → Certificates
+  </Step>
+  <Step title="Generate/Import">
+    Click "Generate/Import"
+  </Step>
+  <Step title="Import Certificate">
+    Upload your .pfx certificate file with password
+  </Step>
+</Steps>
+
+### 2. Configure AL-Go Settings
+
+Add to your `.github/AL-Go-settings.json`:
+
+```json
+{
+  "keyVaultCodesignCertificateName": "MySigningCertificate"
+}
+```
+
+### 3. Verify Permissions
+
+Ensure your identity has:
+- **RBAC:** Key Vault Crypto User + Key Vault Certificate User roles
+- **Access Policy:** Cryptographic Operations: Sign + Certificate permissions: Get
+
+## Secret Name Mapping
+
+AL-Go looks for secrets in this order:
+
+<Steps>
+  <Step title="Environment Secret (GitHub)">
+    Check environment secrets in GitHub
+  </Step>
+  <Step title="Repository Secret (GitHub)">
+    Check repository secrets in GitHub
+  </Step>
+  <Step title="Organization Secret (GitHub)">
+    Check organization secrets in GitHub
+  </Step>
+  <Step title="Azure KeyVault">
+    If `Azure_Credentials` exists, check KeyVault for the secret
+  </Step>
+</Steps>
+
+<Note>
+Secret names in KeyVault should match the names AL-Go expects (e.g., "authContext", "ghTokenWorkflow"). Names are case-insensitive.
+</Note>
+
+## Troubleshooting
+
+### Secret Not Found
+
+<AccordionGroup>
+  <Accordion title="Check secret name">
+    Verify the secret name in KeyVault matches what AL-Go expects
+  </Accordion>
+  
+  <Accordion title="Check permissions">
+    Ensure the identity has "Get" and "List" permissions for secrets
+  </Accordion>
+  
+  <Accordion title="Check Azure_Credentials">
+    Verify the Azure_Credentials secret is correctly formatted and contains valid credentials
+  </Accordion>
+  
+  <Accordion title="Check KeyVault name">
+    Ensure the keyVaultName in Azure_Credentials or settings is correct
+  </Accordion>
+</AccordionGroup>
+
+### Authentication Failed
+
+<AccordionGroup>
+  <Accordion title="Federated credential">
+    Verify the federated credential is configured for the correct repository, branch, or environment
+  </Accordion>
+  
+  <Accordion title="Client secret expired">
+    If using client secret, check if it has expired and create a new one
+  </Accordion>
+  
+  <Accordion title="Identity permissions">
+    Verify the managed identity or app registration has access to the KeyVault
+  </Accordion>
+</AccordionGroup>
+
+### Signing Failed
+
+<AccordionGroup>
+  <Accordion title="Premium SKU">
+    Verify KeyVault is using Premium SKU (required for signing)
+  </Accordion>
+  
+  <Accordion title="Certificate imported">
+    Ensure the certificate is properly imported to KeyVault
+  </Accordion>
+  
+  <Accordion title="Signing permissions">
+    Verify the identity has cryptographic operation permissions
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Managed Identities" icon="id-card">
+    Prefer managed identities with federated credentials for enhanced security
+  </Card>
+  <Card title="Separate KeyVaults" icon="objects-column">
+    Use different KeyVaults for development, staging, and production
+  </Card>
+  <Card title="Enable Logging" icon="file-lines">
+    Enable diagnostic logging on KeyVault to track secret access
+  </Card>
+  <Card title="Regular Audits" icon="magnifying-glass">
+    Regularly review KeyVault access logs and permissions
+  </Card>
+  <Card title="Least Privilege" icon="lock">
+    Grant only the minimum required permissions
+  </Card>
+  <Card title="Soft Delete" icon="trash-can">
+    Enable soft delete and purge protection on KeyVault
+  </Card>
+</CardGroup>
+
+## Example Complete Configuration
+
+### GitHub Secret: Azure_Credentials
+
+```json
+{"keyVaultName":"MyALGoKeyVault","clientId":"12345678-1234-1234-1234-123456789012","tenantId":"87654321-4321-4321-4321-210987654321"}
+```
+
+### KeyVault Secrets
+
+- **authContext**
+  ```json
+  {"tenantId":"87654321-4321-4321-4321-210987654321","scopes":"https://api.businesscentral.dynamics.com/","clientId":"12345678-1234-1234-1234-123456789012"}
+  ```
+
+- **ghTokenWorkflow**
+  ```
+  ghp_YourGitHubPersonalAccessToken
+  ```
+
+- **licenseFileUrl**
+  ```
+  https://example.com/licenses/license.flf?token=abc123
+  ```
+
+### AL-Go Settings (.github/AL-Go-settings.json)
+
+```json
+{
+  "keyVaultName": "MyALGoKeyVault",
+  "keyVaultCodesignCertificateName": "CodeSigningCert"
+}
+```
+
+## Related Topics
+
+- [Secrets Overview](/settings/secrets-overview) - Understanding AL-Go secrets
+- [GitHub Secrets Reference](/settings/github-secrets) - Detailed secret documentation
+- [Advanced Settings](/settings/advanced) - KeyVault-related settings

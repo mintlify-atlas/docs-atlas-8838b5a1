@@ -1,80 +1,208 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with AL-Go for GitHub in minutes by creating your first Business Central repository
 ---
 
-## Get started in three steps
+AL-Go for GitHub is a set of GitHub templates and actions that provide professional DevOps processes for your Business Central AL projects. This guide will walk you through creating your first AL-Go repository and developing your first app.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- A GitHub account
+- VS Code with the following extensions installed:
+  - AL Language
+  - Git
+  - PowerShell
+- Docker Desktop installed and running locally
 
-### Step 2: Deploy your changes
+## Choose Your Template
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+AL-Go for GitHub provides two template repositories depending on your project type:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="AL-Go-PTE" icon="box" href="https://github.com/microsoft/AL-Go-PTE">
+    For **Per Tenant Extensions** - Start here if you're building extensions for specific Business Central tenants
+  </Card>
+  <Card title="AL-Go-AppSource" icon="store" href="https://github.com/microsoft/AL-Go-AppSource">
+    For **AppSource Apps** - Start here if you're building apps to publish on Microsoft AppSource
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+This quickstart uses the AL-Go-PTE template. The process is nearly identical for AppSource apps.
 </Note>
+
+## Create Your Repository
+
+<Steps>
+  <Step title="Create from template">
+    Navigate to [https://github.com/microsoft/AL-Go-PTE](https://github.com/microsoft/AL-Go-PTE) and click **Use this template**, then select **Create a new repository**.
+
+    ![Use this template](https://github.com/user-attachments/assets/78acdaf2-7144-4a58-88da-933a875e6c87)
+  </Step>
+
+  <Step title="Configure repository">
+    Enter a repository name (e.g., **app1**), choose whether to make it Public or Private, and click **Create Repository**.
+
+    ![Create repository](https://github.com/user-attachments/assets/f82d3387-dc81-41d2-8fd5-6fc8ff78c574)
+  </Step>
+
+  <Step title="Create your first app">
+    In your new repository:
+    
+    1. Go to **Actions** → **Show more workflows...**
+    2. Select **Create a new app** → **Run workflow**
+    3. Fill in the form:
+       - **Name**: Your app name
+       - **Publisher**: Your publisher name
+       - **ID range**: e.g., `55000..55100`
+       - **Direct Commit**: ✓ (checked)
+    4. Click **Run workflow**
+
+    ![Create a new app](https://github.com/user-attachments/assets/3a955943-80cc-48a9-9958-d8c2b3132ac5)
+  </Step>
+
+  <Step title="Wait for completion">
+    Wait for the workflow to complete. You can monitor progress in the Actions tab.
+
+    ![Wait for completion](https://github.com/user-attachments/assets/b9e463b4-c282-45e6-94fc-b0d52fd23270)
+  </Step>
+</Steps>
+
+## Set Up Local Development
+
+<Steps>
+  <Step title="Clone the repository">
+    1. In your GitHub repository, click the **Code** button and copy the HTTPS clone URL
+    2. Open VS Code
+    3. Press **Ctrl+Shift+P** (or **Cmd+Shift+P** on Mac)
+    4. Select **Git Clone**
+    5. Paste the clone URL and select a local folder
+
+    ![Clone repository](https://github.com/user-attachments/assets/469c4f1b-9991-40e9-88a3-f306819845d6)
+  </Step>
+
+  <Step title="Open the workspace">
+    When prompted, open the cloned repository and then open the workspace file when VS Code asks you.
+
+    <Note>
+    You can rename the `al.code-workspace` file to something more descriptive to distinguish between multiple workspaces.
+    </Note>
+  </Step>
+
+  <Step title="Run the local development environment script">
+    1. In VS Code, navigate to the `.AL-Go` folder
+    2. Open the `localDevEnv.ps1` script
+    3. Click **Run** to execute the PowerShell script
+
+    ![Run localDevEnv](https://github.com/user-attachments/assets/1b5f9304-bae0-4aba-a72d-358c266a5c94)
+  </Step>
+
+  <Step title="Configure your local container">
+    Answer the prompts:
+    
+    - **Container name**: Choose a name for your local Business Central container
+    - **Authentication mechanism**: Select your preferred authentication (e.g., UserPassword)
+    - **Credentials**: Provide username and password
+    - **License file**: Select **none** for development
+
+    <Warning>
+    The script may ask for permissions to run Docker commands. Click **Yes** when prompted.
+    </Warning>
+
+    Wait for the script to complete. This may take several minutes as it downloads and sets up the Business Central container.
+
+    ![LocalDevEnv completed](https://github.com/user-attachments/assets/9fd335d7-34cb-413e-9d33-3664fee93e80)
+  </Step>
+</Steps>
+
+## Start Developing
+
+<Steps>
+  <Step title="Clear credentials cache">
+    Press **Ctrl+Shift+P** in VS Code and select **AL: Clear Credentials Cache**.
+  </Step>
+
+  <Step title="Modify and test your app">
+    1. Open the `HelloWorld.al` file in your app folder
+    2. Modify the message string to personalize it
+    3. Press **F5** to compile and deploy
+
+    ![Modify Hello World](https://github.com/user-attachments/assets/87826e3b-1717-4f19-a69b-b61bf7092141)
+  </Step>
+
+  <Step title="View your app in Business Central">
+    When prompted, enter the credentials you provided earlier. Business Central will open in your browser.
+    
+    Navigate to **Customers** and see your customized Hello World message!
+
+    ![Hello World in Business Central](https://github.com/user-attachments/assets/ffb0540b-a80e-4186-a280-9ae3a509c89c)
+  </Step>
+</Steps>
+
+## Commit Your Changes
+
+<Steps>
+  <Step title="Review changes">
+    Back in VS Code, you'll notice that in addition to your `HelloWorld.al` changes, the `launch.json` file was also modified with your local environment information.
+  </Step>
+
+  <Step title="Stage, commit, and sync">
+    1. Stage your changes (click the + icon in the Source Control panel)
+    2. Enter a commit message
+    3. Click **Commit**
+    4. Click **Sync Changes** to push to GitHub
+
+    ![Commit changes](https://github.com/user-attachments/assets/e2baf584-12bf-4bd9-ab68-9d1210bab70c)
+  </Step>
+
+  <Step title="View the CI/CD workflow">
+    1. Go back to your repository on github.com
+    2. Click **Actions** to see your workflows running
+    3. Wait for the build to complete
+
+    ![Actions running](https://github.com/user-attachments/assets/505f63f0-d782-409b-8fd2-be3a9ea969cc)
+  </Step>
+
+  <Step title="Inspect build artifacts">
+    When the build completes:
+    
+    1. Click on the completed workflow
+    2. View the **Build summary** to see artifacts created
+    3. Expand the **build** job and explore the **Run Pipeline** section to see compilation details
+
+    ![Build summary](https://github.com/user-attachments/assets/688d814b-758f-4d49-a15a-02700f595a24)
+  </Step>
+</Steps>
+
+## Next Steps
+
+Congratulations! You've successfully created your first AL-Go for GitHub repository and developed your first app. Here's what you can explore next:
+
+<CardGroup cols={2}>
+  <Card title="Add Tests" icon="flask" href="/scenarios/add-test-app">
+    Learn how to add automated testing to your project
+  </Card>
+  <Card title="Set Up Deployment" icon="rocket" href="/scenarios/register-sandbox">
+    Register environments for continuous deployment
+  </Card>
+  <Card title="Create a Release" icon="tag" href="/scenarios/create-release">
+    Package and release your application
+  </Card>
+  <Card title="Take the Workshop" icon="graduation-cap" href="/workshop">
+    Complete the full AL-Go workshop for in-depth learning
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Note>
+If you encounter issues during setup, check that:
+- Docker Desktop is running
+- You have sufficient disk space for the Business Central container
+- Your network allows downloading container images
+- You're using compatible versions of VS Code extensions
+</Note>
+
+For more help, visit the [AL-Go for GitHub repository](https://github.com/microsoft/AL-Go) or check the [usage scenarios](/scenarios/overview).

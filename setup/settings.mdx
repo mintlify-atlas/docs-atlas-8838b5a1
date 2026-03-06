@@ -1,0 +1,676 @@
+---
+title: Settings Reference
+description: Comprehensive guide to AL-Go for GitHub settings and configuration
+---
+
+AL-Go for GitHub behavior is controlled by settings defined in various locations. This guide covers all available settings and where to configure them.
+
+## Settings Location Hierarchy
+
+Settings are applied in order, with later settings overriding earlier ones:
+
+<Steps>
+  <Step title="Organizational settings">
+    `ALGoOrgSettings` GitHub variable (organization level) - applies to all AL-Go repositories in the organization
+  </Step>
+
+  <Step title="Template repository settings">
+    `.github/AL-Go-TemplateRepoSettings.doNotEdit.json` - settings from custom template repository
+  </Step>
+
+  <Step title="Repository settings">
+    `.github/AL-Go-settings.json` - repository-wide settings for all projects
+  </Step>
+
+  <Step title="Repository variables">
+    `ALGoRepoSettings` GitHub variable (repository level) - repository-wide settings
+  </Step>
+
+  <Step title="Template project settings">
+    `.github/AL-Go-TemplateProjectSettings.doNotEdit.json` - project settings from template
+  </Step>
+
+  <Step title="Project settings">
+    `.AL-Go/settings.json` - project-specific settings
+    - Single project: `.AL-Go/settings.json` in repository root
+    - Multiple projects: `<project>/.AL-Go/settings.json` in each project folder
+  </Step>
+
+  <Step title="Workflow-specific settings">
+    - All projects: `.github/<workflow>.settings.json`
+    - Specific project: `.AL-Go/<workflow>.settings.json`
+  </Step>
+
+  <Step title="User-specific settings">
+    `.AL-Go/<username>.settings.json` - rarely used, for local scripts
+  </Step>
+</Steps>
+
+<Note>
+  The repository settings file (`.github/AL-Go-settings.json`) can also contain `BcContainerHelper` settings, applied when loading BcContainerHelper in workflows.
+</Note>
+
+## Basic Project Settings
+
+### Core Configuration
+
+<CodeGroup>
+```json Project Settings
+{
+  "country": "us",
+  "repoVersion": "1.0",
+  "projectName": "My AL Project",
+  "appFolders": ["App", "BaseApp"],
+  "testFolders": ["App.Test"],
+  "bcptTestFolders": ["Performance.Test"]
+}
+```
+
+```json Multi-Project Example
+{
+  "projects": ["Project1", "Project2"],
+  "type": "PTE"
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `country` | Country/localization for the app | `us` |
+| `repoVersion` | Project version number (major.minor) | `1.0` |
+| `projectName` | Friendly name for the project in UI | `''` |
+| `appFolders` | Array of folders containing apps | Auto-detected |
+| `testFolders` | Array of folders containing test apps | Auto-detected |
+| `bcptTestFolders` | Array of folders containing performance test apps | Auto-detected |
+
+### Testing Configuration
+
+<CodeGroup>
+```json Page Scripting Tests
+{
+  "pageScriptingTests": [
+    "recordings/*.yml",
+    "recordings/my*.yml",
+    "recordings/test.yml"
+  ],
+  "doNotRunpageScriptingTests": false
+}
+```
+
+```json Database Restore Events
+{
+  "restoreDatabases": [
+    "BeforeBcpTests",
+    "BeforePageScriptingTests",
+    "BeforeEachTestApp"
+  ]
+}
+```
+
+```json BCPT Thresholds
+{
+  "bcptThresholds": {
+    "DurationWarning": 10,
+    "DurationError": 25,
+    "NumberOfSqlStmtsWarning": 5,
+    "NumberOfSqlStmtsError": 10
+  }
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `pageScriptingTests` | Array of page scripting test file specifications | `[]` |
+| `doNotRunpageScriptingTests` | Skip page scripting tests | `false` |
+| `restoreDatabases` | Events that trigger database restore | `[]` |
+| `bcptThresholds` | Performance test threshold configuration | See above |
+
+### Dependencies
+
+<CodeGroup>
+```json Dependency Probing
+{
+  "appDependencyProbingPaths": [
+    {
+      "repo": "owner/repository",
+      "version": "latest",
+      "release_status": "release",
+      "projects": "*",
+      "branch": "main",
+      "AuthTokenSecret": "GhTokenWorkflow"
+    }
+  ]
+}
+```
+
+```json Install Apps
+{
+  "installApps": [
+    "https://example.com/app.zip",
+    "https://example.com/app2.zip?token=${{SECRETNAME}}",
+    "dependencies/ThirdParty.app"
+  ],
+  "installTestApps": [
+    "https://example.com/testapp.zip",
+    "(https://example.com/testonlyapp.zip)"
+  ],
+  "installOnlyReferencedApps": true
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `appDependencyProbingPaths` | Array of dependency sources to download from | `[]` |
+| `installApps` | Third-party apps to install before compilation | `[]` |
+| `installTestApps` | Third-party test apps to install (parentheses = don't run tests) | `[]` |
+| `installOnlyReferencedApps` | Only install referenced apps from dependencies | `true` |
+
+<Note>
+  In `installApps` and `installTestApps`, use `${{SECRETNAME}}` to insert secret values into URLs.
+</Note>
+
+### Preprocessor and Build Modes
+
+<CodeGroup>
+```json Preprocessor Symbols
+{
+  "preprocessorSymbols": ["CLEAN", "DEBUG"]
+}
+```
+
+```json Build Modes
+{
+  "buildModes": ["Default", "Clean", "Translated"]
+}
+```
+
+```json Conditional Preprocessor
+{
+  "ConditionalSettings": [
+    {
+      "buildModes": ["Clean"],
+      "settings": {
+        "preprocessorSymbols": ["CLEAN"]
+      }
+    }
+  ]
+}
+```
+</CodeGroup>
+
+## AppSource-Specific Settings
+
+<CodeGroup>
+```json AppSource Configuration
+{
+  "type": "AppSource App",
+  "appSourceCopMandatoryAffixes": ["MyPrefix", "MyCompany"],
+  "obsoleteTagMinAllowedMajorMinor": "1.0"
+}
+```
+
+```json AppSource Delivery
+{
+  "deliverToAppSource": {
+    "productId": "12345678-1234-1234-1234-123456789012",
+    "mainAppFolder": "MainApp",
+    "continuousDelivery": false,
+    "branches": ["main", "release/*"],
+    "includeDependencies": ["*.app"]
+  }
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `appSourceCopMandatoryAffixes` | Required affixes for AppSource Cop | `[]` |
+| `obsoleteTagMinAllowedMajorMinor` | Minimum allowed obsolete tag version (enables AS0105) | - |
+| `deliverToAppSource` | AppSource delivery configuration | - |
+
+<Warning>
+  AppSource delivery requires an `AppSourceContext` secret. See [Secrets documentation](/setup/secrets#appsourcecontext).
+</Warning>
+
+## Repository Settings
+
+These settings are only read from `.github/AL-Go-Settings.json`:
+
+<CodeGroup>
+```json Repository Type
+{
+  "type": "PTE",
+  "templateUrl": "https://github.com/microsoft/AL-Go-PTE"
+}
+```
+
+```json Multi-Project
+{
+  "projects": ["Project1", "Project2"],
+  "useProjectDependencies": true
+}
+```
+
+```json Runners and Shell
+{
+  "runs-on": "windows-latest",
+  "githubRunner": "windows-latest",
+  "shell": "powershell",
+  "githubRunnerShell": "powershell"
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `type` | Repository type: `PTE` or `AppSource App` | `PTE` |
+| `projects` | List of project folders (auto-detected if not specified) | - |
+| `templateUrl` | URL of template repository for updates | - |
+| `runs-on` | GitHub runner for non-build jobs | `windows-latest` |
+| `githubRunner` | GitHub runner for build/test jobs | `windows-latest` |
+| `shell` | Default shell for all jobs | `powershell` |
+| `githubRunnerShell` | Shell for build jobs | Same as `shell` |
+
+### Environments and Deployment
+
+<CodeGroup>
+```json Environments
+{
+  "environments": ["QA", "PROD"],
+  "excludeEnvironments": ["github-pages"]
+}
+```
+
+```json Environment Configuration
+{
+  "DeployToQA": {
+    "EnvironmentType": "SaaS",
+    "EnvironmentName": "QA Environment",
+    "Branches": ["main", "release/*"],
+    "Projects": "*",
+    "DependencyInstallMode": "install",
+    "Scope": "PTE",
+    "SyncMode": "Add",
+    "ContinuousDeployment": false
+  }
+}
+```
+
+```json Delivery Targets
+{
+  "DeliverToStorage": {
+    "Branches": ["main"],
+    "CreateContainerIfNotExist": true
+  }
+}
+```
+</CodeGroup>
+
+### Workflow Triggers
+
+<CodeGroup>
+```json Branch Triggers
+{
+  "CICDPushBranches": ["main", "release/*", "feature/*"],
+  "CICDPullRequestBranches": ["main"]
+}
+```
+
+```json Pull Request Trigger Type
+{
+  "pullRequestTrigger": "pull_request"
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `CICDPushBranches` | Branches that trigger CI/CD on push | `["main", "release/*", "feature/*"]` |
+| `CICDPullRequestBranches` | Branches that trigger PR builds | `["main"]` |
+| `pullRequestTrigger` | PR trigger type: `pull_request` or `pull_request_target` | `pull_request` |
+
+<Warning>
+  Using `pull_request_target` exposes secrets to fork PRs. Understand the [security implications](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target) before using.
+</Warning>
+
+### Supported Release Branch Formats
+
+AL-Go supports various release branch naming conventions:
+
+- `releases/26` - matches major version 26
+- `releases/26.x` or `releases/26x` - matches major version 26
+- `releases/v26` or `releases/v26.x` - matches major version 26
+- `releases/26.3` - matches major.minor version 26.3
+- `release/*` - same patterns with singular prefix
+
+## Advanced Settings
+
+### Artifacts and Versioning
+
+<CodeGroup>
+```json Artifact Configuration
+{
+  "artifact": "",
+  "updateDependencies": false,
+  "generateDependencyArtifact": true
+}
+```
+
+```json Versioning Strategy
+{
+  "versioningStrategy": 0,
+  "repoVersion": "2.0"
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `artifact` | BC artifacts search specification | Latest sandbox for country |
+| `updateDependencies` | Update dependencies during build | `false` |
+| `generateDependencyArtifact` | Generate dependency artifacts | `false` |
+| `versioningStrategy` | Version calculation method (0, 2, 3, 15, or +16 variants) | `0` |
+
+<Warning>
+  Using `updateDependencies: true` can cause AppSource validation failures, as not all BC artifact versions are shipped in SaaS.
+</Warning>
+
+#### Versioning Strategies
+
+| Strategy | Build Number | Revision Number |
+|----------|--------------|------------------|
+| `0` | `run_number` + `runNumberOffset` | `run_attempt` - 1 |
+| `2` | Current date (yyyyMMdd) | Current time (hhmmss) |
+| `3` | From app.json | `run_number` |
+| `15` | Maximum value | `run_number` |
+| `+16` | Uses `repoVersion` instead of app.json major.minor | - |
+
+### Code Analysis
+
+<CodeGroup>
+```json Code Analyzers
+{
+  "enableCodeCop": true,
+  "enableUICop": true,
+  "customCodeCops": [
+    "https://example.com/customcop.dll"
+  ],
+  "enableCodeAnalyzersOnTestApps": false,
+  "rulesetFile": "custom.ruleset.json",
+  "enableExternalRulesets": false
+}
+```
+
+```json Failure Behavior
+{
+  "failOn": "error",
+  "trackALAlertsInGitHub": true
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `enableCodeCop` | Enable CodeCop analyzer | `false` |
+| `enableUICop` | Enable UICop analyzer | `false` |
+| `customCodeCops` | URLs/paths to custom analyzers | `[]` |
+| `enableCodeAnalyzersOnTestApps` | Run analyzers on test apps | `false` |
+| `failOn` | Fail on: `none`, `error`, `warning`, `newWarning` | `error` |
+| `trackALAlertsInGitHub` | Upload alerts to GitHub Security | `false` |
+
+### Code Signing
+
+<CodeGroup>
+```json Trusted Signing
+{
+  "trustedSigning": {
+    "Account": "my-signing-account",
+    "Endpoint": "https://weu.codesigning.azure.net",
+    "CertificateProfile": "my-cert-profile"
+  }
+}
+```
+
+```json Certificate Signing
+{
+  "codeSignCertificateUrlSecretName": "CodeSignCertificateUrl",
+  "codeSignCertificatePasswordSecretName": "CodeSignCertificatePassword"
+}
+```
+
+```json KeyVault Certificate
+{
+  "keyVaultCodesignCertificateName": "my-certificate"
+}
+```
+</CodeGroup>
+
+See [Code Signing documentation](../scenarios/codesigning.md) for detailed setup instructions.
+
+### NuGet Feeds
+
+<CodeGroup>
+```json NuGet Configuration
+{
+  "trustMicrosoftNuGetFeeds": true,
+  "nuGetFeedSelectMode": "LatestMatching",
+  "trustedNuGetFeeds": [
+    {
+      "url": "https://nuget.pkg.github.com/myorg/index.json",
+      "authTokenSecret": "NUGET_TOKEN",
+      "patterns": ["MyCompany.*"],
+      "fingerprints": ["ABCD1234..."]
+    }
+  ]
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `trustMicrosoftNuGetFeeds` | Trust Microsoft NuGet feeds | `true` |
+| `nuGetFeedSelectMode` | Package selection: `Earliest`, `EarliestMatching`, `Exact`, `Latest`, `LatestMatching` | `LatestMatching` |
+| `trustedNuGetFeeds` | Array of custom NuGet feed configurations | `[]` |
+
+### Performance and Caching
+
+<CodeGroup>
+```json Self-Hosted Runner Cache
+{
+  "cacheImageName": "my",
+  "cacheKeepDays": 3
+}
+```
+
+```json Incremental Builds
+{
+  "incrementalBuilds": {
+    "onPush": false,
+    "onPull_Request": true,
+    "onSchedule": false,
+    "retentionDays": 30,
+    "mode": "modifiedApps"
+  }
+}
+```
+
+```json Build Patterns
+{
+  "fullBuildPatterns": ["Build/*", ".github/*"],
+  "alwaysBuildAllProjects": false
+}
+```
+</CodeGroup>
+
+<Note>
+  When using `incrementalBuilds`, set `workflowConcurrency` to cancel in-progress builds on the same branch.
+</Note>
+
+### AL Compiler
+
+<CodeGroup>
+```json Compiler Configuration
+{
+  "vsixFile": "default",
+  "useCompilerFolder": false
+}
+```
+</CodeGroup>
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| `vsixFile` | AL Language version: `default`, `latest`, `preview`, or URL | `default` |
+| `useCompilerFolder` | Use containerless compilation | `false` |
+
+<Warning>
+  When using `useCompilerFolder`, you must use the new signing mechanism described in the [Code Signing documentation](../scenarios/codesigning.md).
+</Warning>
+
+## Conditional Settings
+
+Apply settings based on conditions:
+
+<CodeGroup>
+```json Branch-Specific
+{
+  "ConditionalSettings": [
+    {
+      "branches": ["feature/*"],
+      "settings": {
+        "doNotPublishApps": true,
+        "doNotSignApps": true
+      }
+    }
+  ]
+}
+```
+
+```json Workflow-Specific
+{
+  "ConditionalSettings": [
+    {
+      "workflows": ["CICD", "Pull Request Build"],
+      "settings": {
+        "failOn": "warning"
+      }
+    }
+  ]
+}
+```
+
+```json Build Mode-Specific
+{
+  "ConditionalSettings": [
+    {
+      "buildModes": ["Clean"],
+      "settings": {
+        "preprocessorSymbols": ["CLEAN"]
+      }
+    }
+  ]
+}
+```
+</CodeGroup>
+
+Conditions available:
+- `repositories` - Repository name patterns
+- `projects` - Project name patterns
+- `buildModes` - Build mode names
+- `branches` - Branch name patterns
+- `workflows` - Workflow name patterns (see [name sanitization](#workflow-name-sanitization))
+- `users` - Username patterns
+
+<Note>
+  Multiple conditional settings blocks can match. All matching settings are applied in order.
+</Note>
+
+### Workflow Name Sanitization
+
+Workflow names are sanitized before matching:
+- Leading spaces removed
+- Invalid filename characters removed (quotes, colons, slashes, etc.)
+- Example: `" CI/CD"` becomes `"CICD"`
+
+## Workflow-Specific Settings
+
+Some settings are only allowed in workflow-specific files or conditional settings:
+
+<CodeGroup>
+```json Workflow Schedule (.github/CICD.settings.json)
+{
+  "workflowSchedule": {
+    "cron": "0 2 * * 1",
+    "includeBranches": ["main", "release/*"]
+  }
+}
+```
+
+```json Workflow Concurrency
+{
+  "workflowConcurrency": [
+    "group: ${{ github.workflow }}-${{ github.ref }}",
+    "cancel-in-progress: true"
+  ]
+}
+```
+
+```json Workflow Default Inputs
+{
+  "workflowDefaultInputs": [
+    {
+      "name": "directCommit",
+      "value": true
+    },
+    {
+      "name": "useGhTokenWorkflow",
+      "value": false
+    }
+  ]
+}
+```
+</CodeGroup>
+
+| Setting | Description |
+|---------|-------------|
+| `workflowSchedule` | CRON schedule for workflow runs |
+| `workflowConcurrency` | Concurrency control for workflows |
+| `workflowDefaultInputs` | Default values for workflow inputs |
+
+<Note>
+  Build your CRON expressions at [crontab.guru](https://crontab.guru). Run **Update AL-Go System Files** after changing schedules.
+</Note>
+
+## Secret Name Indirection
+
+Many settings allow you to specify custom secret names:
+
+```json
+{
+  "licenseFileUrlSecretName": "MY_LICENSE",
+  "ghTokenWorkflowSecretName": "MY_GH_TOKEN",
+  "adminCenterApiCredentialsSecretName": "MY_ADMIN_CREDS",
+  "applicationInsightsConnectionStringSecretName": "MY_APPINSIGHTS",
+  "storageContextSecretName": "MY_STORAGE"
+}
+```
+
+This pattern works for all secrets: `<secretName>SecretName` points to the actual secret name.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Secrets Reference" icon="key" href="/setup/secrets">
+    Learn about authentication and secret management
+  </Card>
+  <Card title="Workflows" icon="diagram-project" href="/workflows/overview">
+    Explore available workflows and their configuration
+  </Card>
+  <Card title="Scenarios" icon="book" href="/scenarios/overview">
+    View common setup scenarios and use cases
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Get help with common issues
+  </Card>
+</CardGroup>

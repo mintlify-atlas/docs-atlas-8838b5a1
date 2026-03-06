@@ -1,0 +1,579 @@
+---
+title: Power Platform Integration
+description: Connect your AL-Go repository to Power Platform environments for automated deployment of Business Central extensions and Power Platform solutions
+---
+
+AL-Go for GitHub supports integration with Microsoft Power Platform, enabling you to deploy Business Central extensions alongside Power Platform solutions in a unified DevOps pipeline.
+
+## Overview
+
+Power Platform integration allows you to:
+
+<CardGroup cols={3}>
+  <Card title="Unified Deployment" icon="rocket">
+    Deploy Business Central apps and Power Platform solutions together
+  </Card>
+  <Card title="Environment Sync" icon="sync">
+    Keep BC and Power Platform environments in sync
+  </Card>
+  <Card title="Automated Workflows" icon="robot">
+    Automate solution deployment with GitHub Actions
+  </Card>
+</CardGroup>
+
+## Setup Requirements
+
+Before connecting your repository to Power Platform, you need:
+
+- AL-Go repository (PTE or AppSource template)
+- Power Platform environment with Business Central integration
+- Business Central environment connected to Power Platform
+- Authentication credentials (service principal or username/password)
+
+<Warning>
+Username/password authentication is only supported for tenants that do NOT have multi-factor authentication (MFA) enabled. Service principal authentication is recommended for production scenarios.
+</Warning>
+
+## Setup Process
+
+Connecting your GitHub repository to Power Platform involves two main steps:
+
+<Steps>
+  <Step title="Configure Authentication Context">
+    Set up how GitHub authenticates to your Power Platform and Business Central environments.
+  </Step>
+  
+  <Step title="Configure AL-Go Repository Settings">
+    Define which Power Platform solutions and environments to deploy to.
+  </Step>
+</Steps>
+
+## Authentication Context
+
+The authentication context is a JSON object stored as a GitHub secret that defines how to authenticate to both Business Central and Power Platform.
+
+### Naming Convention
+
+Authentication contexts use this naming pattern:
+
+```
+<GitHubEnvironmentName>_AUTHCONTEXT
+```
+
+For example, if your GitHub environment is named `Production`, the secret would be `PRODUCTION_AUTHCONTEXT`.
+
+### Service Principal Authentication (Recommended)
+
+Use a service principal with client secret for secure, automated authentication.
+
+<Steps>
+  <Step title="Create Service Principal">
+    Follow the [detailed setup guide](./SetupServicePrincipalForPowerPlatform.md) to create a service principal with appropriate permissions for both Business Central and Power Platform.
+  </Step>
+  
+  <Step title="Generate Authentication Context">
+    Use BcContainerHelper to generate the authentication JSON:
+
+    ```powershell
+    # Install BcContainerHelper if not already installed
+    Install-Module BcContainerHelper -Force
+
+    # Gather service principal details
+    $ppClientId = Read-Host -Prompt "Enter client id"
+    $ppClientSecret = Read-Host -AsSecureString -Prompt 'Enter client secret'
+
+    # Generate authentication context
+    New-BcAuthContext -includeDeviceLogin | 
+      New-ALGoAuthContext -ppClientSecret $ppClientSecret -ppApplicationId $ppClientId | 
+      Set-Clipboard
+    ```
+
+    The authentication context JSON is now in your clipboard.
+  </Step>
+  
+  <Step title="Add as GitHub Secret">
+    1. Navigate to your repository Settings > Secrets and variables > Actions
+    2. Create a new environment (e.g., "Production")
+    3. Add the secret to the environment with name `<EnvironmentName>_AUTHCONTEXT`
+    4. Paste the JSON from your clipboard
+  </Step>
+</Steps>
+
+<Note>
+Service principal authentication requires an Azure AD app registration with API permissions for both Dynamics 365 Business Central and Power Platform APIs.
+</Note>
+
+### Username/Password Authentication
+
+For non-MFA tenants, you can use username/password authentication.
+
+<Warning>
+This method is less secure and only works for tenants without MFA enabled. Use service principal authentication for production environments.
+</Warning>
+
+```powershell
+# Install BcContainerHelper if not already installed
+Install-Module BcContainerHelper -Force
+
+# Gather credentials
+$ppUserName = Read-Host -Prompt "Enter Power Platform user name"
+$ppPassword = Read-Host -AsSecureString -Prompt 'Enter Power Platform password'
+
+# Generate authentication context
+New-BcAuthContext -includeDeviceLogin | 
+  New-ALGoAuthContext -ppUsername $ppUserName -ppPassword $ppPassword | 
+  Set-Clipboard
+```
+
+## AL-Go Repository Settings
+
+Configure your `.github/AL-Go-Settings.json` file to define Power Platform integration.
+
+### Basic Configuration
+
+```json
+{
+  "type": "PTE",
+  "templateUrl": "https://github.com/microsoft/AL-Go-PTE@main",
+  "powerPlatformSolutionFolder": "<PowerPlatformSolutionName>",
+  "environments": [
+    "<GitHubEnvironmentName>"
+  ],
+  "DeployTo<GitHubEnvironmentName>": {
+    "environmentName": "<BusinessCentralEnvironmentName>",
+    "companyId": "<BusinessCentralCompanyId>",
+    "ppEnvironmentUrl": "<PowerPlatformEnvironmentUrl>"
+  }
+}
+```
+
+### Configuration Properties
+
+<Tabs>
+  <Tab title="powerPlatformSolutionFolder">
+    **Power Platform Solution Folder**
+
+    Specifies the folder containing your Power Platform solution files.
+
+    ```json
+    {
+      "powerPlatformSolutionFolder": "MyPowerPlatformSolution"
+    }
+    ```
+
+    This folder should contain:
+    - Solution files exported from Power Platform
+    - Canvas apps, model-driven apps, or flows
+    - Connection references and environment variables
+  </Tab>
+  
+  <Tab title="environments">
+    **GitHub Environments**
+
+    Array of GitHub environment names to deploy to.
+
+    ```json
+    {
+      "environments": [
+        "Production",
+        "Staging",
+        "Development"
+      ]
+    }
+    ```
+
+    Each environment must have a corresponding authentication context secret.
+  </Tab>
+  
+  <Tab title="DeployTo Settings">
+    **Deployment Configuration**
+
+    For each environment, specify deployment details:
+
+    ```json
+    {
+      "DeployToProduction": {
+        "environmentName": "PRODUCTION",
+        "companyId": "8d8e0b6a-4a1c-4c1e-9b0a-1234567890ab",
+        "ppEnvironmentUrl": "https://org12345678.crm.dynamics.com"
+      }
+    }
+    ```
+
+    **Properties:**
+    - `environmentName`: Business Central environment name
+    - `companyId`: GUID of the BC company to deploy to
+    - `ppEnvironmentUrl`: Power Platform environment URL
+  </Tab>
+</Tabs>
+
+### Getting Power Platform Environment URL
+
+<Steps>
+  <Step title="Access Power Platform Admin Center">
+    Navigate to [https://admin.powerplatform.microsoft.com](https://admin.powerplatform.microsoft.com)
+  </Step>
+  
+  <Step title="Select Environment">
+    Click on your target environment in the environments list.
+  </Step>
+  
+  <Step title="Copy Environment URL">
+    Copy the Environment URL from the details panel. It will be in the format:
+    ```
+    https://orgXXXXXXXX.crm.dynamics.com
+    ```
+  </Step>
+</Steps>
+
+### Getting Business Central Company ID
+
+<Steps>
+  <Step title="Open Business Central">
+    Navigate to your Business Central environment.
+  </Step>
+  
+  <Step title="Access API">
+    Navigate to:
+    ```
+    https://api.businesscentral.dynamics.com/v2.0/<tenantId>/<environmentName>/api/v2.0/companies
+    ```
+  </Step>
+  
+  <Step title="Find Company ID">
+    Locate your company in the JSON response and copy the `id` value.
+  </Step>
+</Steps>
+
+<Note>
+Alternatively, use PowerShell to retrieve the company ID:
+
+```powershell
+Get-BcEnvironments | 
+  ForEach-Object { Get-BcEnvironmentCompanies -bcAuthContext $authContext -environment $_.name }
+```
+</Note>
+
+## Complete Setup Example
+
+Here's a complete example configuration:
+
+### File Structure
+
+```
+MyALGoRepo/
+├── .github/
+│   ├── AL-Go-Settings.json
+│   └── workflows/
+├── MyApp/
+│   └── app.json
+└── MyPowerPlatformSolution/
+    ├── solution.xml
+    └── other solution files...
+```
+
+### AL-Go-Settings.json
+
+```json
+{
+  "type": "PTE",
+  "templateUrl": "https://github.com/microsoft/AL-Go-PTE@main",
+  "country": "us",
+  "powerPlatformSolutionFolder": "MyPowerPlatformSolution",
+  "environments": [
+    "Production",
+    "Test"
+  ],
+  "DeployToProduction": {
+    "environmentName": "PRODUCTION",
+    "companyId": "12345678-1234-1234-1234-123456789012",
+    "ppEnvironmentUrl": "https://org98765432.crm.dynamics.com"
+  },
+  "DeployToTest": {
+    "environmentName": "TEST",
+    "companyId": "87654321-4321-4321-4321-210987654321",
+    "ppEnvironmentUrl": "https://org-test.crm.dynamics.com"
+  }
+}
+```
+
+### GitHub Secrets
+
+Create these environment secrets:
+
+- `PRODUCTION_AUTHCONTEXT` (in Production environment)
+- `TEST_AUTHCONTEXT` (in Test environment)
+
+Each containing the authentication context JSON generated earlier.
+
+## Deployment Workflow
+
+Once configured, AL-Go automatically deploys both Business Central and Power Platform components:
+
+<Steps>
+  <Step title="Trigger Deployment">
+    Deployments can be triggered by:
+    - Publishing a release
+    - Running the "Publish To Environment" workflow manually
+    - Automatic deployment on successful CI/CD (if configured)
+  </Step>
+  
+  <Step title="AL-Go Deploys BC Apps">
+    AL-Go compiles and deploys Business Central extensions to the specified environment and company.
+  </Step>
+  
+  <Step title="AL-Go Deploys PP Solutions">
+    If a Power Platform solution folder is configured, AL-Go deploys the solution to the specified Power Platform environment.
+  </Step>
+  
+  <Step title="Verify Deployment">
+    Check both Business Central and Power Platform environments to confirm successful deployment.
+  </Step>
+</Steps>
+
+## Advanced Configuration
+
+### Multiple Power Platform Solutions
+
+If you have multiple Power Platform solutions, you can specify an array:
+
+```json
+{
+  "powerPlatformSolutionFolder": [
+    "Solution1",
+    "Solution2"
+  ]
+}
+```
+
+### Environment-Specific Solutions
+
+Deploy different solutions to different environments:
+
+```json
+{
+  "DeployToProduction": {
+    "environmentName": "PRODUCTION",
+    "companyId": "12345678-1234-1234-1234-123456789012",
+    "ppEnvironmentUrl": "https://org98765432.crm.dynamics.com",
+    "powerPlatformSolutionFolder": "ProductionSolution"
+  },
+  "DeployToTest": {
+    "environmentName": "TEST",
+    "companyId": "87654321-4321-4321-4321-210987654321",
+    "ppEnvironmentUrl": "https://org-test.crm.dynamics.com",
+    "powerPlatformSolutionFolder": "TestSolution"
+  }
+}
+```
+
+### Skip Power Platform Deployment
+
+To deploy only Business Central apps without Power Platform solutions:
+
+```json
+{
+  "DeployToProduction": {
+    "environmentName": "PRODUCTION",
+    "companyId": "12345678-1234-1234-1234-123456789012",
+    "skipPowerPlatformDeployment": true
+  }
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Authentication failed to Power Platform">
+    **Common causes:**
+    - Service principal doesn't have required permissions
+    - Client secret has expired
+    - Username/password authentication used with MFA-enabled tenant
+    - Incorrect tenant ID or client ID
+
+    **Solutions:**
+    - Verify service principal has Dynamics 365 and Power Platform API permissions
+    - Regenerate client secret and update authentication context
+    - Switch to service principal authentication
+    - Double-check all IDs in authentication context
+  </Accordion>
+  
+  <Accordion title="Power Platform environment URL not found">
+    **Common causes:**
+    - Incorrect environment URL format
+    - Environment doesn't exist or has been deleted
+    - Service principal doesn't have access to environment
+
+    **Solutions:**
+    - Verify URL format: `https://orgXXXXXXXX.crm.dynamics.com`
+    - Check environment exists in Power Platform Admin Center
+    - Grant service principal System Administrator role in Power Platform
+  </Accordion>
+  
+  <Accordion title="Business Central company ID invalid">
+    **Common causes:**
+    - Company ID is not a valid GUID
+    - Company doesn't exist in the specified environment
+    - Incorrect environment name
+
+    **Solutions:**
+    - Verify company ID format: `12345678-1234-1234-1234-123456789012`
+    - List companies using BC API or PowerShell
+    - Confirm environment name matches exactly
+  </Accordion>
+  
+  <Accordion title="Solution deployment failed">
+    **Common causes:**
+    - Solution folder doesn't exist
+    - Invalid solution files
+    - Missing dependencies in target environment
+    - Solution requires manual configuration steps
+
+    **Solutions:**
+    - Verify folder path is correct relative to repository root
+    - Export solution again from Power Platform
+    - Deploy dependent solutions first
+    - Review solution import logs in Power Platform
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Service Principals" icon="key">
+    Always use service principal authentication for production environments instead of username/password
+  </Card>
+  <Card title="Separate Environments" icon="layer-group">
+    Maintain separate GitHub environments for development, test, and production
+  </Card>
+  <Card title="Version Control Solutions" icon="code-branch">
+    Store Power Platform solutions in source control using solution files, not just deployed solutions
+  </Card>
+  <Card title="Test Deployments" icon="vial">
+    Always test deployments in non-production environments before deploying to production
+  </Card>
+</CardGroup>
+
+### Security Recommendations
+
+<Warning>
+**Security best practices:**
+
+- Rotate service principal secrets regularly
+- Use separate service principals for different environments
+- Grant minimum required permissions to service principals
+- Enable audit logging in Power Platform
+- Review deployment logs for suspicious activity
+- Store authentication contexts as environment secrets, not repository secrets
+</Warning>
+
+### Solution Management
+
+<Steps>
+  <Step title="Export Unmanaged Solutions">
+    During development, work with unmanaged solutions in your development environment.
+  </Step>
+  
+  <Step title="Version Solutions">
+    Update solution version numbers before exporting for deployment.
+  </Step>
+  
+  <Step title="Export as Managed">
+    Export solutions as managed solutions for deployment to test and production environments.
+  </Step>
+  
+  <Step title="Store in Repository">
+    Commit solution files to your repository for version control and automated deployment.
+  </Step>
+</Steps>
+
+## Integration Scenarios
+
+### Scenario 1: BC Extension with Power Apps UI
+
+Deploy a Business Central extension with a Power Apps canvas app that extends the BC UI:
+
+```json
+{
+  "powerPlatformSolutionFolder": "BCExtensionUI",
+  "environments": ["Production"],
+  "DeployToProduction": {
+    "environmentName": "PRODUCTION",
+    "companyId": "12345678-1234-1234-1234-123456789012",
+    "ppEnvironmentUrl": "https://org98765432.crm.dynamics.com"
+  }
+}
+```
+
+Workflow:
+1. AL-Go deploys BC extension
+2. AL-Go deploys Power Apps solution
+3. Power Apps connects to BC using data connector
+
+### Scenario 2: Automated Power Automate Flows
+
+Deploy BC extensions with Power Automate flows for automation:
+
+```json
+{
+  "powerPlatformSolutionFolder": "BCAutomationFlows",
+  "environments": ["Production"]
+}
+```
+
+Use case:
+- BC extension raises events
+- Power Automate flows respond to events
+- Automate notifications, approvals, data sync
+
+### Scenario 3: Multi-Environment ALM
+
+Manage application lifecycle across environments:
+
+```json
+{
+  "environments": ["Development", "Test", "Production"],
+  "powerPlatformSolutionFolder": "EnterpriseSolution"
+}
+```
+
+Deployment pipeline:
+1. Develop in Development environment
+2. Deploy to Test for validation
+3. Promote to Production after approval
+
+## Monitoring and Diagnostics
+
+Enable telemetry to monitor Power Platform deployments:
+
+```json
+{
+  "PartnerTelemetryConnectionString": "<your-app-insights-connection-string>",
+  "powerPlatformSolutionFolder": "MySolution"
+}
+```
+
+Track:
+- Deployment success/failure rates
+- Deployment duration
+- Authentication issues
+- Solution import errors
+
+See the [Telemetry documentation](/advanced/telemetry) for details on monitoring AL-Go workflows.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Service Principal Setup" icon="user-shield" href="./SetupServicePrincipalForPowerPlatform">
+    Detailed guide for creating service principals
+  </Card>
+  <Card title="Azure KeyVault" icon="key" href="/advanced/azure-keyvault">
+    Store authentication contexts securely in KeyVault
+  </Card>
+  <Card title="CI/CD Workflows" icon="sync" href="/workflows/cicd">
+    Automate deployments with GitHub Actions
+  </Card>
+  <Card title="Enable Telemetry" icon="chart-line" href="/advanced/telemetry">
+    Monitor Power Platform deployment performance
+  </Card>
+</CardGroup>

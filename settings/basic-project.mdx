@@ -1,0 +1,298 @@
+---
+title: Basic Project Settings
+description: Core settings for configuring AL-Go projects
+---
+
+Basic project settings control the fundamental behavior of your AL-Go project. These settings can be defined in the project settings file (`.AL-Go/settings.json`) or in higher-level settings files.
+
+## Project Identity
+
+<ParamField path="projectName" type="string" default="">
+  Friendly name for the AL-Go project displayed in workflow UIs (CI/CD, Pull Request Build, etc.)
+  
+  If not set, the project name will be the relative path from the repository root.
+  
+  **Example:**
+  ```json
+  {
+    "projectName": "Core Extensions"
+  }
+  ```
+</ParamField>
+
+## Localization
+
+<ParamField path="country" type="string" default="us">
+  Specifies which country/region this app is built against.
+  
+  **Supported values:** us, w1, base, at, au, be, bg, br, ca, ch, co, cz, de, dk, ee, es, fi, fr, gb, gr, hk, hr, hu, ie, in, is, it, jp, kr, lt, lv, mx, nl, no, nz, pe, ph, pl, pt, ro, rs, se, si, sk, th, tr, tw, ua, vn
+  
+  **Example:**
+  ```json
+  {
+    "country": "dk"
+  }
+  ```
+</ParamField>
+
+## Versioning
+
+<ParamField path="repoVersion" type="string" default="1.0">
+  The project version number consisting of `<major>.<minor>` (or `<major>.<minor>.<build>` when versioningStrategy is 3 or 19).
+  
+  Used for naming build artifacts in CI/CD workflows. Build artifacts are named `<project>-Apps-<repoVersion>.<build>.<revision>`.
+  
+  The version number is used as major.minor for individual apps when versioningStrategy is +16.
+  
+  **Example:**
+  ```json
+  {
+    "repoVersion": "2.5"
+  }
+  ```
+</ParamField>
+
+## App and Test Folders
+
+<ParamField path="appFolders" type="array" default={[]}>
+  Array of folders (relative to project root) containing apps for this project.
+  
+  Apps in these folders are sorted based on dependencies and built and published in that order.
+  
+  If not specified, AL-Go will try to locate app folders in the root of the project.
+  
+  **Example:**
+  ```json
+  {
+    "appFolders": [
+      "src/Core",
+      "src/Extensions"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="testFolders" type="array" default={[]}>
+  Array of folders (relative to project root) containing test apps for this project.
+  
+  Apps in these folders are sorted based on dependencies, built, published, and tests are run in that order.
+  
+  If not specified, AL-Go will try to locate test folders in the root of the project.
+  
+  **Example:**
+  ```json
+  {
+    "testFolders": [
+      "test/Core.Test",
+      "test/Integration.Test"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="bcptTestFolders" type="array" default={[]}>
+  Array of folders (relative to project root) containing BCPT performance test apps.
+  
+  Apps are sorted based on dependencies, built, published, and BCPT tests are run in that order.
+  
+  If not specified, AL-Go will try to locate BCPT test folders in the root of the project.
+  
+  **Example:**
+  ```json
+  {
+    "bcptTestFolders": [
+      "test/Performance"
+    ]
+  }
+  ```
+</ParamField>
+
+## Page Scripting Tests
+
+<ParamField path="pageScriptingTests" type="array" default={[]}>
+  Array of page scripting test file specifications, relative to the AL-Go project.
+  
+  **File specification examples:**
+  - `recordings/my*.yml` - all YAML files in recordings subfolder matching `my*.yml`
+  - `recordings` - all `*.yml` files in recordings subfolder
+  - `recordings/test.yml` - single YAML file
+  
+  **Example:**
+  ```json
+  {
+    "pageScriptingTests": [
+      "recordings/smoke*.yml",
+      "recordings/regression.yml"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="doNotRunPageScriptingTests" type="boolean" default={false}>
+  When true, forces the pipeline to NOT run page scripting tests specified in `pageScriptingTests`.
+  
+  <Note>
+  This setting can be set in a workflow-specific settings file to apply only to that workflow.
+  </Note>
+</ParamField>
+
+## Database Restoration
+
+<ParamField path="restoreDatabases" type="array" default={[]}>
+  Array of events indicating when to start with clean databases in the container.
+  
+  **Possible events:**
+  - `BeforeBcptTests`
+  - `BeforePageScriptingTests`
+  - `BeforeEachTestApp`
+  - `BeforeEachBcptTestApp`
+  - `BeforeEachPageScriptingTest`
+  
+  **Example:**
+  ```json
+  {
+    "restoreDatabases": [
+      "BeforeEachTestApp",
+      "BeforeBcptTests"
+    ]
+  }
+  ```
+</ParamField>
+
+## Dependencies
+
+<ParamField path="appDependencyProbingPaths" type="array" default={[]}>
+  Array of dependency specifications from which apps are downloaded when the CI/CD workflow starts.
+  
+  Each dependency specification consists of:
+  - **repo** - repository name
+  - **version** - version (default: latest)
+  - **release_status** - latestBuild/release/prerelease/draft (default: release)
+  - **projects** - projects (default: * = all)
+  - **branch** - branch (default: main)
+  - **AuthTokenSecret** - name of secret containing auth token (default: none)
+  
+  **Example:**
+  ```json
+  {
+    "appDependencyProbingPaths": [
+      {
+        "repo": "myorg/common-libraries",
+        "version": "latest",
+        "release_status": "release",
+        "projects": "*",
+        "branch": "main"
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+## Preprocessor Symbols
+
+<ParamField path="preprocessorSymbols" type="array" default={[]}>
+  List of preprocessor symbols to use when building the apps.
+  
+  This setting can be specified in workflow-specific settings files or in conditional settings.
+  
+  **Example:**
+  ```json
+  {
+    "preprocessorSymbols": [
+      "DEBUG",
+      "FEATURE_X"
+    ]
+  }
+  ```
+</ParamField>
+
+## Performance Testing
+
+<ParamField path="bcptThresholds" type="object">
+  Structure with properties for thresholds when running performance tests using the Business Central Performance Toolkit.
+  
+  **Properties:**
+  - **DurationWarning** - Warning if test duration degrades more than this percentage (default: 10)
+  - **DurationError** - Error if test duration degrades more than this percentage (default: 25)
+  - **NumberOfSqlStmtsWarning** - Warning if SQL statements increase more than this percentage (default: 5)
+  - **NumberOfSqlStmtsError** - Error if SQL statements increase more than this percentage (default: 10)
+  
+  <Note>
+  Errors and warnings on the build in GitHub are only issued when a threshold is exceeded at the codeunit level. Individual operation threshold exceedances are only shown in the test results viewer.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "bcptThresholds": {
+      "DurationWarning": 15,
+      "DurationError": 30,
+      "NumberOfSqlStmtsWarning": 10,
+      "NumberOfSqlStmtsError": 20
+    }
+  }
+  ```
+</ParamField>
+
+## AppSource-Specific Settings
+
+These settings only apply when the repository type is "AppSource App".
+
+<ParamField path="appSourceCopMandatoryAffixes" type="array" default={[]}>
+  Array of affixes used for running AppSource Cop (only for AppSource App type).
+  
+  **Example:**
+  ```json
+  {
+    "appSourceCopMandatoryAffixes": [
+      "ABC",
+      "XYZ"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="obsoleteTagMinAllowedMajorMinor" type="string">
+  Enables AppSource Cop rule AS0105. Objects pending obsoletion with an obsolete tag version lower than this value are not allowed.
+  
+  **Example:**
+  ```json
+  {
+    "obsoleteTagMinAllowedMajorMinor": "18.0"
+  }
+  ```
+</ParamField>
+
+<ParamField path="deliverToAppSource" type="object">
+  Structure with properties for AppSource delivery from AL-Go for GitHub.
+  
+  **Properties:**
+  - **branches** - Array of branch patterns allowed to deliver to AppSource (default: main)
+  - **productId** - Product ID from Partner Center (required)
+  - **mainAppFolder** - App folder of the main app if you have multiple apps
+  - **continuousDelivery** - Set to true to enable continuous delivery to AppSource Validation
+  - **includeDependencies** - Array of file names (with wildcards) for dependencies to include
+  
+  <Note>
+  You need to define an `AppSourceContext` secret to publish to AppSource. Requires `generateDependencyArtifact` set to true for including dependencies.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "deliverToAppSource": {
+      "branches": ["main", "release/*"],
+      "productId": "12345678-1234-1234-1234-123456789012",
+      "mainAppFolder": "src/MainApp",
+      "continuousDelivery": false,
+      "includeDependencies": ["Microsoft_*.app"]
+    }
+  }
+  ```
+</ParamField>
+
+## Related Settings
+
+For repository-level settings that apply across all projects, see [Basic Repository Settings](/settings/basic-repository).
+
+For advanced build and deployment settings, see [Advanced Settings](/settings/advanced).

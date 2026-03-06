@@ -1,0 +1,597 @@
+---
+title: Continuous Deployment
+description: Configure automated deployment pipelines for Business Central applications with AL-Go for GitHub
+---
+
+Continuous Deployment (CD) in AL-Go for GitHub automates the process of deploying your Business Central applications to various environments whenever changes are pushed to specified branches. This enables rapid iteration, consistent deployments, and reduced manual intervention.
+
+## Overview
+
+AL-Go for GitHub supports multiple deployment strategies:
+
+- **Environment-based deployment**: Automatic deployment to Business Central environments
+- **Package-based deployment**: Delivery to NuGet feeds and GitHub Packages
+- **Storage-based deployment**: Publishing artifacts to Azure Storage
+- **AppSource deployment**: Submission to Microsoft AppSource
+
+<Note>
+Continuous Deployment is automatically triggered by the **CI/CD workflow** on successful builds. Production environments tagged with `(Production)` are excluded from automatic deployments.
+</Note>
+
+## Environment Deployment
+
+### Basic Configuration
+
+Configure environments in your AL-Go settings to enable automatic deployment:
+
+```json
+{
+  "environments": [
+    "DEV",
+    "QA",
+    "UAT"
+  ]
+}
+```
+
+With this configuration:
+- Successful builds automatically deploy to DEV, QA, and UAT environments
+- Each environment requires an `AUTHCONTEXT` secret
+- Deployments use Service-to-Service (S2S) authentication
+
+### Branch-Specific Deployment
+
+Control which branches deploy to which environments:
+
+```json
+{
+  "DeployToDEV": {
+    "ContinuousDeployment": true,
+    "Branches": ["main", "develop", "feature/*"]
+  },
+  "DeployToQA": {
+    "ContinuousDeployment": true,
+    "Branches": ["main", "release/*"]
+  },
+  "DeployToUAT": {
+    "ContinuousDeployment": true,
+    "Branches": ["main"]
+  }
+}
+```
+
+**Deployment flow**:
+- `feature/*` branches → DEV only
+- `develop` branch → DEV only
+- `release/*` branches → DEV and QA
+- `main` branch → DEV, QA, and UAT
+
+### Advanced Environment Configuration
+
+<Steps>
+  <Step title="Environment Naming">
+    Map GitHub environment names to Business Central environment names:
+
+    ```json
+    {
+      "DeployToQA": {
+        "EnvironmentName": "Quality Assurance",
+        "ContinuousDeployment": true
+      }
+    }
+    ```
+
+    This is useful when:
+    - BC environment names contain spaces
+    - BC environment names have special characters
+    - You want different naming conventions
+  </Step>
+
+  <Step title="Deployment Timing">
+    Control when deployments occur:
+
+    ```json
+    {
+      "DeployToUAT": {
+        "ContinuousDeployment": true,
+        "ScheduleOnly": true,
+        "Schedule": "0 2 * * 1-5"
+      }
+    }
+    ```
+
+    This configuration deploys to UAT only during scheduled times (2 AM on weekdays).
+  </Step>
+
+  <Step title="Selective App Deployment">
+    Deploy specific apps to specific environments:
+
+    ```json
+    {
+      "DeployToDEV": {
+        "ContinuousDeployment": true,
+        "Apps": ["*.app"],
+        "TestApps": ["*.app"]
+      },
+      "DeployToQA": {
+        "ContinuousDeployment": true,
+        "Apps": ["*.app"],
+        "TestApps": []
+      }
+    }
+    ```
+
+    - DEV receives both apps and test apps
+    - QA receives only production apps
+  </Step>
+</Steps>
+
+## Deployment Workflows
+
+### CI/CD Workflow
+
+The primary workflow for continuous deployment:
+
+**Trigger conditions**:
+- Push to repository branches
+- Pull request creation/updates
+- Manual workflow dispatch
+- Scheduled runs
+
+**Workflow stages**:
+
+<Steps>
+  <Step title="Analyze">
+    - Identifies changed projects
+    - Determines target environments
+    - Filters out production environments
+    - Sets up build matrix
+  </Step>
+
+  <Step title="Build">
+    - Compiles AL applications
+    - Runs tests
+    - Generates artifacts (.app files)
+    - Creates build output
+  </Step>
+
+  <Step title="Deploy">
+    - Authenticates to environments
+    - Publishes apps to Business Central
+    - Verifies deployment success
+    - Logs deployment details
+  </Step>
+
+  <Step title="Deliver">
+    - Packages artifacts for delivery targets
+    - Publishes to NuGet feeds
+    - Uploads to storage accounts
+    - Updates package registries
+  </Step>
+</Steps>
+
+### Publish to Environment Workflow
+
+Manual deployment workflow for controlled releases:
+
+**Use cases**:
+- Deploy to production environments
+- Deploy specific versions
+- Re-deploy after configuration changes
+- Emergency hotfix deployments
+
+**Workflow inputs**:
+- **App version**: `latest`, `current`, or specific version tag
+- **Environment name**: Target environment or `*` for all
+
+```yaml
+name: Publish To Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      appVersion:
+        description: 'App version to deploy'
+        required: false
+        default: 'current'
+      environmentName:
+        description: 'Environment to deploy to'
+        required: false
+        default: '*'
+```
+
+## Authentication Methods
+
+### Service-to-Service (S2S) Authentication
+
+The recommended authentication method for automated deployments:
+
+**AUTHCONTEXT secret format**:
+```json
+{"TenantID":"<TenantID>","ClientID":"<ClientID>","ClientSecret":"<ClientSecret>"}
+```
+
+**Setup requirements**:
+1. Create Microsoft Entra app registration
+2. Configure API permissions for Business Central
+3. Generate client secret
+4. Add app to BC environment
+5. Create GitHub secret
+
+<Warning>
+Always use compressed JSON format (single line) with no newlines. Multi-line JSON will cause authentication failures.
+</Warning>
+
+### Azure Key Vault Integration
+
+For enhanced security, store authentication secrets in Azure Key Vault:
+
+```json
+{
+  "keyVaultName": "MyCompanyVault",
+  "environments": ["QA", "UAT"]
+}
+```
+
+**Benefits**:
+- Centralized secret management
+- Automatic secret rotation
+- Enhanced audit logging
+- Compliance with security policies
+
+## Delivery Targets
+
+Continuous delivery to package repositories and storage:
+
+### NuGet/GitHub Packages
+
+Automatically publish apps to package feeds:
+
+```json
+{
+  "DeliverToGitHubPackages": {
+    "ContinuousDelivery": true,
+    "Branches": ["main", "develop"]
+  },
+  "DeliverToNuGet": {
+    "ContinuousDelivery": true,
+    "Branches": ["main"]
+  }
+}
+```
+
+**Required secrets**:
+- `GitHubPackagesContext`: For GitHub Packages
+- `NuGetContext`: For custom NuGet feeds
+
+See [Delivery Targets](./delivery-targets) for detailed configuration.
+
+### Azure Storage
+
+Publish artifacts to Azure Storage accounts:
+
+```json
+{
+  "DeliverToStorage": {
+    "ContinuousDelivery": true,
+    "Branches": ["main"]
+  }
+}
+```
+
+**StorageContext secret**:
+```json
+{"StorageAccountName":"<AccountName>","ContainerName":"<Container>","BlobName":"<Path>","StorageAccountKey":"<Key>"}
+```
+
+## Deployment Strategies
+
+### Trunk-Based Development
+
+Single main branch with feature flags:
+
+```json
+{
+  "DeployToDEV": {
+    "ContinuousDeployment": true,
+    "Branches": ["main"]
+  },
+  "DeployToQA": {
+    "ContinuousDeployment": true,
+    "Branches": ["main"]
+  }
+}
+```
+
+**Workflow**:
+1. Develop features with feature flags
+2. Merge to main frequently
+3. Automatic deployment to DEV and QA
+4. Manual promotion to production
+
+### GitFlow
+
+Multiple long-lived branches:
+
+```json
+{
+  "DeployToDEV": {
+    "ContinuousDeployment": true,
+    "Branches": ["develop", "feature/*"]
+  },
+  "DeployToQA": {
+    "ContinuousDeployment": true,
+    "Branches": ["release/*"]
+  },
+  "DeployToUAT": {
+    "ContinuousDeployment": true,
+    "Branches": ["main"]
+  }
+}
+```
+
+**Workflow**:
+1. Feature development in `feature/*` branches → DEV
+2. Integration in `develop` branch → DEV
+3. Release branches `release/*` → QA
+4. Production releases in `main` → UAT
+5. Manual deployment to production
+
+### Environment Promotion
+
+Progressive deployment through environments:
+
+<Steps>
+  <Step title="Development">
+    Automatic deployment on every commit:
+    - Branch: `develop`
+    - Environment: DEV
+    - Frequency: Every push
+  </Step>
+
+  <Step title="Testing">
+    Deployment after DEV validation:
+    - Branch: `develop` (after approval)
+    - Environment: QA
+    - Frequency: Daily or on-demand
+  </Step>
+
+  <Step title="Staging">
+    Pre-production validation:
+    - Branch: `main`
+    - Environment: UAT
+    - Frequency: Per release candidate
+  </Step>
+
+  <Step title="Production">
+    Manual deployment of approved releases:
+    - Branch: `main`
+    - Environment: PROD (Production)
+    - Frequency: Scheduled releases
+  </Step>
+</Steps>
+
+## Monitoring and Observability
+
+### Deployment Metrics
+
+Track key deployment indicators:
+
+- **Deployment Frequency**: How often deployments occur
+- **Lead Time**: Time from commit to deployment
+- **Failure Rate**: Percentage of failed deployments
+- **Recovery Time**: Time to recover from failures
+
+### Workflow Logging
+
+AL-Go workflows provide detailed logging:
+
+```bash
+# View recent workflow runs
+gh run list --workflow=CICD.yaml
+
+# View specific run details
+gh run view <run-id> --log
+
+# View deployment logs
+gh run view <run-id> --log | grep -A 20 "Deploy to"
+```
+
+### Telemetry Integration
+
+Enable AL-Go telemetry for deployment tracking:
+
+```json
+{
+  "enableTelemetry": true,
+  "doNotPublishAppsTelemetry": false
+}
+```
+
+**Collected metrics**:
+- Deployment duration
+- Success/failure rates
+- Environment targets
+- App versions deployed
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Small, Frequent Deployments" icon="repeat">
+    **Recommendations**:
+    - Deploy multiple times per day to DEV
+    - Keep changes small and focused
+    - Use feature flags for incomplete features
+    - Enable quick rollback capabilities
+
+    **Benefits**:
+    - Reduced deployment risk
+    - Faster feedback loops
+    - Easier troubleshooting
+    - Improved team velocity
+  </Card>
+
+  <Card title="Automated Testing" icon="check-circle">
+    **Test pyramid**:
+    - Unit tests (fast, many)
+    - Integration tests (moderate)
+    - End-to-end tests (slow, few)
+
+    **CI/CD integration**:
+    - Run tests before deployment
+    - Block deployment on test failures
+    - Generate test reports
+    - Track test coverage
+  </Card>
+
+  <Card title="Environment Parity" icon="clone">
+    **Maintain consistency**:
+    - Use same BC version across environments
+    - Match configuration settings
+    - Replicate data structures
+    - Mirror security settings
+
+    **Configuration as code**:
+    - Store environment configs in Git
+    - Use AL-Go settings for consistency
+    - Document environment differences
+    - Automate environment setup
+  </Card>
+
+  <Card title="Rollback Preparation" icon="rotate-left">
+    **Rollback strategy**:
+    - Tag all production deployments
+    - Keep previous versions accessible
+    - Test rollback procedures regularly
+    - Document rollback steps
+
+    **Quick rollback**:
+    - Use `Publish To Environment` workflow
+    - Deploy previous version tag
+    - Verify functionality
+    - Communicate to stakeholders
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Common Issues
+
+<CardGroup cols={2}>
+  <Card title="Deployment Not Triggered" icon="circle-pause">
+    **Possible causes**:
+    - Branch not configured for environment
+    - Environment filtered in Analyze phase
+    - CI/CD workflow disabled
+    - Missing authentication secret
+
+    **Debug steps**:
+    1. Check `DeployTo<Env>` settings
+    2. Verify branch patterns
+    3. Review workflow logs
+    4. Confirm secret exists
+  </Card>
+
+  <Card title="Authentication Failures" icon="lock">
+    **Symptoms**:
+    - 401 Unauthorized errors
+    - Invalid client secret
+    - Tenant not found
+
+    **Solutions**:
+    - Regenerate client secret
+    - Verify TenantID, ClientID
+    - Check API permissions
+    - Ensure JSON is compressed
+  </Card>
+
+  <Card title="Deployment Timeout" icon="clock">
+    **Causes**:
+    - Large app size
+    - Environment performance
+    - Network connectivity
+    - Concurrent deployments
+
+    **Remediation**:
+    - Optimize app size
+    - Scale BC environment
+    - Check network status
+    - Stagger deployments
+  </Card>
+
+  <Card title="Version Conflicts" icon="git-merge">
+    **Scenarios**:
+    - Dependency version mismatch
+    - App already installed
+    - Schema changes required
+
+    **Resolution**:
+    - Update dependencies
+    - Force-sync environment
+    - Plan schema migrations
+    - Use upgrade codeunits
+  </Card>
+</CardGroup>
+
+## Security Considerations
+
+### Secret Management
+
+<Steps>
+  <Step title="Use Environment Secrets">
+    Store sensitive data in GitHub environment secrets:
+    - Isolated per environment
+    - Protected by branch policies
+    - Audited access
+  </Step>
+
+  <Step title="Implement Least Privilege">
+    Grant minimum necessary permissions:
+    - Service principal per environment
+    - Read-only for non-deployment workflows
+    - Time-limited credentials
+  </Step>
+
+  <Step title="Enable Audit Logging">
+    Track all deployment activities:
+    - GitHub Actions logs
+    - Azure AD sign-in logs
+    - BC telemetry
+  </Step>
+
+  <Step title="Regular Secret Rotation">
+    Rotate credentials periodically:
+    - Client secrets: 90 days
+    - Access tokens: 30 days
+    - Review service principals: Quarterly
+  </Step>
+</Steps>
+
+### Compliance
+
+Ensure continuous deployment meets compliance requirements:
+
+- **Change Management**: Document all deployments
+- **Approval Gates**: Require manual approval for sensitive environments
+- **Audit Trail**: Maintain deployment history
+- **Separation of Duties**: Different teams for dev and production
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sandbox Environment" href="./sandbox-environment">
+    Set up sandbox environments for automated deployment
+  </Card>
+
+  <Card title="Production Environment" href="./production-environment">
+    Configure production environments for controlled releases
+  </Card>
+
+  <Card title="Delivery Targets" href="./delivery-targets">
+    Publish packages to NuGet feeds and GitHub Packages
+  </Card>
+
+  <Card title="AL-Go Settings" href="https://aka.ms/algosettings">
+    Explore all available configuration options
+  </Card>
+</CardGroup>

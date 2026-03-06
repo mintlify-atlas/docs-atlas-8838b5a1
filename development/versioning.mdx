@@ -1,0 +1,578 @@
+---
+title: Versioning Strategy
+description: Understand version numbering, strategies, and release management in AL-Go for GitHub projects
+---
+
+AL-Go for GitHub provides flexible versioning strategies to manage how version numbers are generated for your Business Central apps. Understanding these strategies helps you maintain consistent versioning across builds, releases, and deployments.
+
+## Version Number Structure
+
+Business Central app version numbers consist of four segments:
+
+```
+Major.Minor.Build.Revision
+```
+
+<CardGroup cols={2}>
+  <Card title="Major" icon="1">
+    Major version number, read from `app.json` or `repoVersion` setting.
+    
+    Increment for breaking changes.
+  </Card>
+
+  <Card title="Minor" icon="2">
+    Minor version number, read from `app.json` or `repoVersion` setting.
+    
+    Increment for new features.
+  </Card>
+
+  <Card title="Build" icon="3">
+    Build number, calculated based on versioning strategy.
+    
+    Automatically incremented.
+  </Card>
+
+  <Card title="Revision" icon="4">
+    Revision number, calculated based on versioning strategy.
+    
+    Tracks rebuild attempts.
+  </Card>
+</CardGroup>
+
+## Versioning Strategies
+
+AL-Go supports multiple versioning strategies configured via the `versioningStrategy` setting.
+
+### Strategy 0: GitHub Run Number (Default)
+
+```json
+{
+  "versioningStrategy": 0
+}
+```
+
+**How it works**:
+- **Major.Minor**: Read from `app.json`
+- **Build**: GitHub workflow `run_number` + `runNumberOffset`
+- **Revision**: GitHub workflow `run_attempt` - 1
+
+**Example**:
+```
+app.json version: 2.5.0.0
+GitHub run_number: 123
+GitHub run_attempt: 1
+runNumberOffset: 0
+
+Result: 2.5.123.0
+```
+
+<Note>
+**Best for**: Most projects. Provides ever-increasing build numbers tied to CI/CD workflow runs.
+</Note>
+
+**Advantages**:
+- Simple and predictable
+- Build numbers never conflict
+- Easy to trace back to workflow run
+
+**Considerations**:
+- Build numbers reset if you migrate to a new repository
+- Use `runNumberOffset` to continue numbering or reset when incrementing major/minor
+
+### Strategy 2: Date-Based Versioning
+
+```json
+{
+  "versioningStrategy": 2
+}
+```
+
+**How it works**:
+- **Major.Minor**: Read from `app.json`
+- **Build**: Current date as `yyyyMMdd` (UTC)
+- **Revision**: Current time as `hhmmss` (UTC)
+
+**Example**:
+```
+app.json version: 1.0.0.0
+Build time: March 6, 2026 14:30:45 UTC
+
+Result: 1.0.20260306.143045
+```
+
+<Warning>
+**Collision Risk**: Multiple CI/CD workflows starting within the same second will have identical version numbers, which can cause conflicts.
+</Warning>
+
+**Advantages**:
+- Version number indicates when it was built
+- Intuitive for time-based releases
+
+**Use cases**:
+- Daily builds
+- Nightly releases
+- Projects with infrequent builds
+
+### Strategy 3: Explicit Build Number
+
+```json
+{
+  "versioningStrategy": 3
+}
+```
+
+**How it works**:
+- **Major.Minor.Build**: All read from `app.json`
+- **Revision**: GitHub workflow `run_number`
+
+**Example**:
+```
+app.json version: 2.5.10.0
+GitHub run_number: 47
+
+Result: 2.5.10.47
+```
+
+<Note>
+**Full Control**: You manually control Major, Minor, and Build numbers. Only Revision auto-increments.
+</Note>
+
+**Advantages**:
+- Complete control over version numbers
+- Useful for semantic versioning with specific build numbers
+- Good for coordinated releases across multiple apps
+
+**Requires**:
+- Manual updates to `app.json` when incrementing build number
+- Discipline to keep version numbers consistent
+
+### Strategy 15: Maximum Build Number
+
+```json
+{
+  "versioningStrategy": 15
+}
+```
+
+**How it works**:
+- **Major.Minor**: Read from `app.json`
+- **Build**: Maximum possible value (32767 or 65535 depending on platform)
+- **Revision**: GitHub workflow `run_number`
+
+**Example**:
+```
+app.json version: 1.0.0.0
+GitHub run_number: 25
+
+Result: 1.0.65535.25
+```
+
+<Warning>
+**Use with Caution**: This strategy is designed for non-official builds like PR builds or test workflows. Do NOT use for production releases.
+</Warning>
+
+**Use cases**:
+- Pull request builds (temporary artifacts)
+- Developer test builds
+- Experimental workflows
+- Ensuring test builds sort after production builds
+
+### Strategy +16: Repo Version Override
+
+Add 16 to any strategy to use `repoVersion` instead of individual `app.json` versions.
+
+```json
+{
+  "versioningStrategy": 16,
+  "repoVersion": "3.2"
+}
+```
+
+**How it works**:
+- All apps use `repoVersion` for Major.Minor instead of their `app.json` values
+- For strategy 19 (3+16), Build is also taken from `repoVersion`
+- Build and Revision follow the base strategy rules
+
+**Examples**:
+
+**Strategy 16 (0+16)**:
+```json
+{
+  "versioningStrategy": 16,
+  "repoVersion": "2.1"
+}
+
+Result: 2.1.<run_number>.<run_attempt-1>
+```
+
+**Strategy 19 (3+16)**:
+```json
+{
+  "versioningStrategy": 19,
+  "repoVersion": "2.1.5"
+}
+
+Result: 2.1.5.<run_number>
+```
+
+<Note>
+**Multi-App Projects**: Use +16 strategies when you have multiple apps that should share the same Major.Minor version number.
+</Note>
+
+## Repo Version Setting
+
+The `repoVersion` setting defines the project-level version number.
+
+```json
+{
+  "repoVersion": "1.0"
+}
+```
+
+**Usage**:
+- Build artifacts are named: `<project>-Apps-<repoVersion>.<build>.<revision>`
+- Used as Major.Minor when `versioningStrategy` is +16
+- For strategy 19, can include Build: `"repoVersion": "1.0.5"`
+
+**When to update**:
+- After each release (to prepare for next version)
+- When incrementing major or minor version
+- To align with marketing version numbers
+
+## Run Number Offset
+
+The `runNumberOffset` setting adjusts the build number for strategy 0 and 16.
+
+```json
+{
+  "versioningStrategy": 0,
+  "runNumberOffset": 100
+}
+```
+
+**How it works**:
+```
+Build number = GitHub run_number + runNumberOffset
+```
+
+**Common scenarios**:
+
+### Reset Build Number
+
+When incrementing major/minor version, reset build number:
+
+```json
+// Before: version 1.0.523.0
+// Increment to 1.1 and reset build number
+{
+  "repoVersion": "1.1",
+  "runNumberOffset": -523
+}
+// Next build: 1.1.1.0 (if run_number is 524)
+```
+
+### Continue Numbering After Migration
+
+When migrating to a new repository:
+
+```json
+// Last build in old repo: 2.0.1050.0
+// Continue in new repo:
+{
+  "runNumberOffset": 1050
+}
+// First build in new repo: 2.0.1051.0 (if run_number is 1)
+```
+
+## Choosing a Versioning Strategy
+
+<Steps>
+  <Step title="Consider your release cadence">
+    **Frequent releases**: Strategy 0 or 2
+    
+    **Controlled releases**: Strategy 3
+    
+    **Mixed releases**: Strategy 0 with periodic repoVersion updates
+  </Step>
+
+  <Step title="Evaluate app count">
+    **Single app**: Any strategy works
+    
+    **Multiple apps with independent versions**: Strategy 0, 2, or 3
+    
+    **Multiple apps with shared versions**: Strategy 16 or 19
+  </Step>
+
+  <Step title="Assess team workflow">
+    **Automated releases**: Strategy 0 or 2
+    
+    **Manual version control**: Strategy 3
+    
+    **Semantic versioning**: Strategy 3 or 19
+  </Step>
+</Steps>
+
+## Practical Examples
+
+### Example 1: Standard Per-Tenant Extension
+
+```json
+{
+  "versioningStrategy": 0,
+  "repoVersion": "1.0",
+  "runNumberOffset": 0
+}
+```
+
+**app.json**:
+```json
+{
+  "version": "1.0.0.0"
+}
+```
+
+**Build sequence**:
+- Run 1: `1.0.1.0`
+- Run 2: `1.0.2.0`
+- Run 50: `1.0.50.0`
+
+**After release, increment repoVersion**:
+```json
+{
+  "repoVersion": "1.1"
+}
+```
+
+- Run 51: `1.1.51.0`
+
+**Or reset build number**:
+```json
+{
+  "repoVersion": "1.1",
+  "runNumberOffset": -50
+}
+```
+
+- Run 51: `1.1.1.0`
+
+### Example 2: AppSource App with Date Versions
+
+```json
+{
+  "versioningStrategy": 2
+}
+```
+
+**app.json**:
+```json
+{
+  "version": "3.0.0.0"
+}
+```
+
+**Build examples**:
+- March 6, 2026 at 09:15:30: `3.0.20260306.91530`
+- March 6, 2026 at 18:45:00: `3.0.20260306.184500`
+- March 7, 2026 at 08:00:00: `3.0.20260307.80000`
+
+### Example 3: Multi-App Project with Shared Version
+
+```json
+{
+  "versioningStrategy": 16,
+  "repoVersion": "2.5"
+}
+```
+
+**App 1 app.json**:
+```json
+{
+  "version": "1.0.0.0"  // Ignored
+}
+```
+
+**App 2 app.json**:
+```json
+{
+  "version": "3.0.0.0"  // Ignored
+}
+```
+
+**Both apps built with**:
+- Run 100: `2.5.100.0`
+- Run 101: `2.5.101.0`
+
+### Example 4: Semantic Versioning with Control
+
+```json
+{
+  "versioningStrategy": 3
+}
+```
+
+**Development (app.json)**:
+```json
+{
+  "version": "2.3.0.0"
+}
+```
+
+- Run 10: `2.3.0.10`
+- Run 11: `2.3.0.11`
+
+**Before release, update app.json**:
+```json
+{
+  "version": "2.3.1.0"
+}
+```
+
+- Run 12: `2.3.1.12` (Release)
+
+**Start next version**:
+```json
+{
+  "version": "2.3.2.0"
+}
+```
+
+- Run 13: `2.3.2.13`
+
+## Release Workflow
+
+<Steps>
+  <Step title="Create release">
+    Use the **Create Release** workflow to tag and publish a release.
+
+    Specify:
+    - Release name (e.g., `v1.0`)
+    - Tag (e.g., `1.0.0`)
+    - Next version increment (e.g., `+0.1` to increment minor version)
+  </Step>
+
+  <Step title="AL-Go creates artifacts">
+    The workflow:
+    - Builds apps with current version
+    - Creates GitHub release with artifacts
+    - Tags the commit
+  </Step>
+
+  <Step title="Version increment PR">
+    AL-Go automatically creates a pull request to increment the version number.
+
+    This ensures:
+    - Future builds don't conflict with the release
+    - Hotfixes can target the release tag
+    - Main branch moves forward
+  </Step>
+
+  <Step title="Merge version increment">
+    Review and merge the version increment pull request.
+
+    The next CI/CD run uses the new version number.
+  </Step>
+</Steps>
+
+<Note>
+**Why increment after release?**: This allows you to create hotfixes for the release version without version conflicts with ongoing development in the main branch.
+</Note>
+
+## Best Practices
+
+### Version Number Consistency
+
+- Keep `repoVersion` updated after releases
+- Use consistent strategies across related projects
+- Document your versioning approach in README
+- Don't change strategies mid-project without good reason
+
+### Semantic Versioning
+
+Follow semantic versioning principles:
+
+```
+Major.Minor.Patch
+```
+
+- **Major**: Breaking changes, incompatible API changes
+- **Minor**: New features, backward-compatible
+- **Patch**: Bug fixes, backward-compatible
+
+### Build Artifact Naming
+
+Build artifacts include version in the name:
+
+```
+MyApp-Apps-1.0.123.0.zip
+```
+
+- Enables easy identification
+- Facilitates deployment automation
+- Supports parallel versions
+
+### Hotfix Management
+
+<Steps>
+  <Step title="Tag release commits">
+    Always tag release commits (handled by Create Release workflow).
+  </Step>
+
+  <Step title="Create hotfix branch from tag">
+    ```bash
+    git checkout -b hotfix/1.0.1 v1.0.0
+    ```
+  </Step>
+
+  <Step title="Fix and build">
+    Make fixes and run CI/CD on the hotfix branch.
+    
+    The version strategy continues from the release point.
+  </Step>
+
+  <Step title="Release hotfix">
+    Create a new release from the hotfix branch.
+    
+    Merge fixes back to main if needed.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Build Number Conflicts
+
+**Problem**: Two builds have the same version number
+
+**Solutions**:
+- Don't use strategy 2 with frequent builds
+- Ensure `runNumberOffset` is set correctly
+- Check that workflow runs aren't being reset
+
+### Version Mismatch in app.json
+
+**Problem**: Built app has different version than expected
+
+**Solutions**:
+- Verify `versioningStrategy` setting
+- Check if using +16 strategy (uses `repoVersion`)
+- Ensure `app.json` is committed and pushed
+
+### Can't Install App Due to Version
+
+**Problem**: Newer version required by dependencies
+
+**Solutions**:
+- Increment major/minor version in `app.json` or `repoVersion`
+- Adjust `runNumberOffset` if using strategy 0
+- Check dependency version requirements
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Releases" icon="rocket">
+    Learn how to create and manage releases in AL-Go for GitHub
+  </Card>
+
+  <Card title="App Dependencies" icon="link" href="./dependencies">
+    Configure dependencies with proper version constraints
+  </Card>
+</CardGroup>

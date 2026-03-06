@@ -1,0 +1,169 @@
+---
+title: Add a Test App
+description: Learn how to add a test app to your AL-Go for GitHub project to ensure code quality and automated testing
+---
+
+Adding test apps to your AL-Go project enables automated testing in your CI/CD pipeline. When tests fail, the pipeline prevents deployment until issues are resolved, ensuring code quality throughout your development process.
+
+## Prerequisites
+
+Before adding a test app, ensure you have:
+- A working AL-Go for GitHub repository
+- Appropriate permissions to create pull requests in your organization
+- Basic understanding of AL test codeunits
+
+## Create a Test App
+
+<Steps>
+  <Step title="Run the Create Test App workflow">
+    Navigate to **Actions** in your GitHub repository, locate and select **Create a new test app**, then click **Run workflow**.
+
+    Enter the required information:
+    - **Name**: The name of your test app
+    - **Publisher**: Your publisher name
+    - **ID Range**: The ID range for your test objects
+
+    Click **Run workflow** to start the process.
+  </Step>
+
+  <Step title="Handle permission issues (if applicable)">
+    If GitHub Actions are not allowed to create pull requests in your organization, you'll receive an error message.
+
+    <Warning>
+      If you see an error stating that GitHub Actions are not allowed to create Pull Requests, you have two options:
+      1. Click the provided link to create the pull request manually
+      2. Update your organization settings to allow workflow-created pull requests
+    </Warning>
+
+    To enable pull request creation by workflows:
+    1. Go to **Organization** → **Settings** → **Actions** → **General**
+    2. Under **Workflow permissions**, check **Allow GitHub Actions to create and approve pull requests**
+  </Step>
+
+  <Step title="Review and merge the pull request">
+    Once the workflow completes, navigate to **Pull Requests** in your repository.
+
+    Review the changes made by the workflow, which include:
+    - New test app folder structure
+    - Sample test codeunit
+    - Updated project configuration
+
+    When satisfied, **Merge the pull request** and **Confirm the merge**.
+  </Step>
+
+  <Step title="Verify CI/CD execution">
+    After merging, a **CI/CD workflow** automatically triggers.
+
+    Navigate to **Actions** to monitor the workflow execution. You'll see a "Merge pull request" CI workflow running.
+  </Step>
+</Steps>
+
+## Fix Failing Tests
+
+The initial test app includes a sample test that may fail deliberately to demonstrate the testing workflow.
+
+<Steps>
+  <Step title="Identify the test failure">
+    If the CI/CD workflow fails, click on the failed workflow run to inspect the build details.
+
+    The error log will show which test failed and why (typically a message mismatch in the sample test).
+  </Step>
+
+  <Step title="Fix the test in VS Code">
+    1. Open your project in VS Code
+    2. Click the **sync button** to pull changes from the server
+    3. Locate and open the **HelloWorld.Test.al** file (or your test file)
+    4. Fix the test assertion to match the expected message
+  </Step>
+
+  <Step title="Commit and push your changes">
+    1. **Stage** your changes
+    2. **Commit** with a descriptive message
+    3. **Push** to the remote repository
+
+    This triggers another CI/CD workflow automatically.
+  </Step>
+
+  <Step title="Verify the fix">
+    Navigate to **Actions** on GitHub to monitor the new CI/CD workflow.
+
+    This time, the workflow should pass successfully. When you inspect the workflow details, you'll notice:
+    - All tests pass
+    - Build artifacts are created
+    - Deploy step may be skipped if no environment is configured
+  </Step>
+</Steps>
+
+## Understanding Test App Behavior
+
+<CardGroup cols={2}>
+  <Card title="Automatic Test Execution" icon="play">
+    Test apps are automatically run during CI/CD workflows. Failed tests block the pipeline, preventing broken code from being deployed.
+  </Card>
+
+  <Card title="Build Artifacts" icon="box">
+    Successful builds create test app artifacts alongside your main apps, available for download from the workflow run.
+  </Card>
+
+  <Card title="Environment Deployment" icon="cloud">
+    Test apps are deployed to configured environments along with your main apps, enabling testing in real environments.
+  </Card>
+
+  <Card title="Pull Request Testing" icon="code-branch">
+    Pull requests automatically run tests, providing immediate feedback on code changes before they're merged.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Note>
+**Test-Driven Development**: Consider writing tests before implementing features. This ensures your code meets requirements and remains testable.
+</Note>
+
+### Organize Your Tests
+
+- Keep test apps in separate folders from production apps
+- Use meaningful test names that describe what they verify
+- Group related tests in the same test codeunit
+- Follow AL test framework conventions
+
+### Test Coverage
+
+```al
+[Test]
+procedure TestCustomerCreation()
+var
+    Customer: Record Customer;
+begin
+    // Arrange
+    Customer.Init();
+    Customer."No." := 'TEST001';
+    Customer.Name := 'Test Customer';
+    
+    // Act
+    Customer.Insert(true);
+    
+    // Assert
+    Customer.Get('TEST001');
+    Assert.AreEqual('Test Customer', Customer.Name, 'Customer name mismatch');
+end;
+```
+
+### Continuous Integration
+
+- Ensure all tests pass before merging pull requests
+- Monitor test execution times to keep builds fast
+- Fix failing tests immediately to maintain pipeline health
+- Use test results to drive code improvements
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Add Performance Tests" icon="gauge" href="./add-performance-test">
+    Learn how to add BCPT performance test apps to measure app performance
+  </Card>
+
+  <Card title="Configure Dependencies" icon="link" href="./dependencies">
+    Set up app dependencies from external repositories
+  </Card>
+</CardGroup>

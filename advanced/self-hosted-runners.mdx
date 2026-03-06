@@ -1,0 +1,395 @@
+---
+title: Self-Hosted GitHub Runners
+description: Set up self-hosted GitHub runners to dramatically improve build performance through caching and optimized resources
+---
+
+Self-hosted GitHub runners can significantly reduce CI/CD workflow execution time, especially for build jobs. By caching generic images, build images, and artifacts, build performance can be dramatically improved.
+
+## Benefits of Self-Hosted Runners
+
+<CardGroup cols={3}>
+  <Card title="Faster Builds" icon="rocket">
+    Cache images and artifacts for significantly faster build times
+  </Card>
+  <Card title="Resource Control" icon="server">
+    Control hardware specs and optimize for your workload
+  </Card>
+  <Card title="Cost Efficiency" icon="dollar-sign">
+    Reduce GitHub Actions minutes usage for large projects
+  </Card>
+</CardGroup>
+
+## Runner Registration Scope
+
+GitHub runners can be registered at two levels:
+
+- **Organization level** - Accessible to all repositories in the organization
+- **Repository level** - Dedicated to a single repository
+
+### Registration URLs
+
+<Tabs>
+  <Tab title="Organization">
+    Navigate to:
+    ```
+    https://github.com/organizations/{organization}/settings/actions/runners/new
+    ```
+  </Tab>
+  <Tab title="Repository">
+    Navigate to:
+    ```
+    https://github.com/{organization}/{repository}/settings/actions/runners
+    ```
+  </Tab>
+</Tabs>
+
+## Setup Methods
+
+You can set up self-hosted runners using two approaches:
+
+<CardGroup cols={2}>
+  <Card title="Azure VM Template" icon="cloud">
+    Quick automated setup using Microsoft's template
+  </Card>
+  <Card title="Manual Setup" icon="wrench">
+    Full control over runner configuration and dependencies
+  </Card>
+</CardGroup>
+
+## Method 1: Azure VM Template
+
+The fastest way to create self-hosted runners is using the Azure VM template.
+
+<Steps>
+  <Step title="Access Template">
+    Navigate to [https://aka.ms/getbuildagent](https://aka.ms/getbuildagent) in a new tab.
+  </Step>
+  
+  <Step title="Configure VM Settings">
+    Enter the following information:
+    - **Resource Group name** - Azure resource group for the VM
+    - **Region** - Azure region for deployment
+    - **VM Name** - Name for your virtual machine
+    - **Admin Password** - Administrator password for VM access
+    - **Number of agents** - How many runners to create on the VM
+  </Step>
+  
+  <Step title="Configure Runner Settings">
+    From the GitHub "Create Self-Hosted Runner" page, copy:
+    - **Token** - Registration token from GitHub
+    - **Organization URL** - Your GitHub organization URL
+    - **Agent URL** - GitHub Actions runner download URL
+    - **Labels** - Set to `self-hosted`
+  </Step>
+  
+  <Step title="Deploy">
+    Select **Review and Create**, review the configuration, then choose **Create**.
+  </Step>
+  
+  <Step title="Verify Registration">
+    Wait for Azure VM creation to complete, then verify the runners appear as registered and ready on GitHub.
+  </Step>
+</Steps>
+
+<Note>
+The Azure template automatically installs all required dependencies including Docker, PowerShell, Git, and development tools.
+</Note>
+
+## Method 2: Manual Setup
+
+For more control over the runner environment, you can set up runners manually.
+
+<Steps>
+  <Step title="Choose Configuration">
+    On the GitHub runner registration page, select:
+    - **Runner Image**: Windows
+    - **Architecture**: x64
+  </Step>
+  
+  <Step title="Follow Installation Steps">
+    Follow the provided instructions to download and configure the runner on your machine.
+  </Step>
+  
+  <Step title="Install Required Software">
+    Ensure the following software is installed:
+  </Step>
+</Steps>
+
+### Required Dependencies
+
+<Tabs>
+  <Tab title="Docker">
+    Install Docker Engine using [this script](https://github.com/microsoft/nav-arm-templates/blob/master/InstallOrUpdateDockerEngine.ps1).
+    
+    <Warning>
+    Set the EnvScope to Machine if installing Docker with a different user than the one running the agents.
+    </Warning>
+  </Tab>
+  
+  <Tab title="PowerShell Tools">
+    Install the Azure PowerShell module:
+    ```powershell
+    Install-Module az -force
+    ```
+  </Tab>
+  
+  <Tab title="Development Tools">
+    Install using Chocolatey:
+    ```powershell
+    # Install Chocolatey first
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+    # Install Git
+    choco install git --force --params "/NoAutoCrlf"
+
+    # Install other tools
+    choco install 7zip -y
+    choco install gh -y
+    choco install pwsh -y
+    choco install vcredist140 -y
+    choco install dotnet -y
+    choco install dotnet-sdk -y
+    ```
+  </Tab>
+  
+  <Tab title="NuGet">
+    Add nuget.org as a dotnet source:
+    ```bash
+    dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
+    ```
+  </Tab>
+</Tabs>
+
+### Complete Software List
+
+| Software | Purpose | Installation Method |
+|----------|---------|---------------------|
+| Docker Engine | Container runtime | PowerShell script |
+| Azure PowerShell Module | Azure integration | `Install-Module az -force` |
+| Git | Version control | `choco install git --force --params "/NoAutoCrlf"` |
+| 7-Zip | Archive extraction | `choco install 7zip` |
+| GitHub CLI | GitHub operations | `choco install gh` |
+| PowerShell 7.4.1+ | Scripting runtime | `choco install pwsh -y` |
+| Visual C++ Redistributable | Runtime libraries | `choco install vcredist140 -y` |
+| .NET Runtime | Application runtime | `choco install dotnet -y` |
+| .NET SDK | Development SDK | `choco install dotnet-sdk -y` |
+
+<Note>
+If the Deploy Reference Documentation job fails with errors, verify your Git installation configuration. See [this issue](https://github.com/actions/upload-pages-artifact/issues/95) for details.
+</Note>
+
+## Configure Repository Access
+
+Once your runners are set up, configure your repository to use them.
+
+<Steps>
+  <Step title="Configure Runner Group">
+    On the GitHub runners list, select the **Default** runner group and allow public repositories if your repository is public.
+  </Step>
+  
+  <Step title="Update AL-Go Settings">
+    Edit your repository settings file at `.github/AL-Go-Settings.json` and set the `gitHubRunner` property:
+
+    ```json
+    {
+      "gitHubRunner": "self-hosted"
+    }
+    ```
+
+    <Note>
+    You can use additional tags like `"self-hosted, Windows"` to target specific runner types if you have multiple self-hosted runners with different operating systems.
+    </Note>
+  </Step>
+  
+  <Step title="Test and Verify">
+    Commit the settings change and monitor your workflows. You should see:
+    - Performance improvements on the second run (after cache is populated)
+    - Runners picking up workflow jobs
+    - Active status on the runner in GitHub settings
+  </Step>
+</Steps>
+
+## Understanding Runner Settings
+
+AL-Go provides two settings to control runner selection:
+
+### gitHubRunner vs. runs-on
+
+<Tabs>
+  <Tab title="gitHubRunner">
+    **Used for**: Build and test jobs requiring:
+    - High memory and CPU
+    - Docker container support
+    - Longer execution times
+
+    ```json
+    {
+      "gitHubRunner": "self-hosted"
+    }
+    ```
+
+    <Note>
+    Build jobs benefit most from self-hosted runners due to caching capabilities.
+    </Note>
+  </Tab>
+  
+  <Tab title="runs-on">
+    **Used for**: Lightweight jobs like:
+    - Initialization
+    - Post-processing
+    - Deployment coordination
+    - Artifact management
+
+    ```json
+    {
+      "runs-on": "ubuntu-latest"
+    }
+    ```
+
+    <Warning>
+    We do not recommend using self-hosted runners for `runs-on` jobs. Many of these jobs run in parallel and use minimal resources. GitHub-hosted runners (especially ubuntu-latest) are faster and more cost-effective for these tasks.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Performance Optimization
+
+### Runner Capacity Planning
+
+Based on real-world testing:
+
+<CardGroup cols={2}>
+  <Card title="Over-allocation Risk" icon="warning">
+    Running 5+ concurrent builds on a single VM causes:
+    - 50% slower individual build times
+    - High CPU contention
+    - Memory pressure
+  </Card>
+  <Card title="Optimal Configuration" icon="check">
+    Running 4 concurrent builds provides:
+    - Similar performance to single build
+    - Good resource utilization
+    - Minimal queuing
+  </Card>
+</CardGroup>
+
+### Performance Tips
+
+<Steps>
+  <Step title="Disable Real-Time Protection">
+    Turning off Windows Defender real-time protection on self-hosted runners can improve build performance by approximately 25%.
+
+    <Warning>
+    Only disable antivirus protection if your runners are in a secure, isolated network environment.
+    </Warning>
+  </Step>
+  
+  <Step title="Right-Size Runner Count">
+    Monitor CPU and memory usage to determine optimal runner count:
+    - Start with 4 runners per VM
+    - Monitor performance during concurrent builds
+    - Adjust based on actual workload
+  </Step>
+  
+  <Step title="Use SSD Storage">
+    Docker image caching benefits significantly from fast storage:
+    - Use SSD or NVMe storage for runner workspace
+    - Allocate sufficient disk space for image cache
+  </Step>
+</Steps>
+
+### Performance Metrics
+
+Typical improvements with self-hosted runners:
+
+| Metric | GitHub-Hosted | Self-Hosted (First Run) | Self-Hosted (Cached) |
+|--------|---------------|-------------------------|----------------------|
+| Build Time | Baseline | Similar to baseline | 50-70% faster |
+| Image Download | Every run | First run only | Cached |
+| Artifact Access | Remote | Remote | Local cache available |
+
+## Monitoring Runners
+
+Track runner performance and activity:
+
+<Steps>
+  <Step title="View Active Jobs">
+    Click on a runner in GitHub settings to see:
+    - Current job being executed
+    - Job duration
+    - Workflow name and run ID
+  </Step>
+  
+  <Step title="Monitor Queue">
+    Check for queued workflows when all runners are busy:
+    - Workflows will wait for available runners
+    - Consider adding more runners if queuing is frequent
+  </Step>
+  
+  <Step title="Check Resource Usage">
+    Connect to the runner VM to monitor:
+    - CPU utilization
+    - Memory usage
+    - Disk I/O
+    - Network activity
+  </Step>
+</Steps>
+
+<Note>
+Runners show as "Idle" when not executing jobs and "Active" when running workflows. A green status indicator confirms the runner is online and available.
+</Note>
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Runners not picking up jobs">
+    Verify:
+    - Runner is online and shows "Idle" status
+    - Repository has access to the runner group
+    - `gitHubRunner` setting matches runner labels
+    - Runner has sufficient disk space
+  </Accordion>
+  
+  <Accordion title="Slow build performance">
+    Check:
+    - Number of concurrent builds vs. runner capacity
+    - CPU and memory usage during builds
+    - Antivirus real-time scanning
+    - Disk I/O performance
+  </Accordion>
+  
+  <Accordion title="Runner offline/disconnected">
+    Investigate:
+    - Runner service status on the VM
+    - Network connectivity to GitHub
+    - VM resource availability
+    - Registration token expiration
+  </Accordion>
+</AccordionGroup>
+
+## Security Considerations
+
+<Warning>
+**Important security notes for self-hosted runners:**
+
+- Do not use self-hosted runners with public repositories unless they are in an isolated environment
+- Self-hosted runners can execute arbitrary code from pull requests
+- Use GitHub's security features to restrict runner access
+- Regularly update runner software and dependencies
+- Monitor runner activity for suspicious behavior
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Azure KeyVault Integration" icon="key" href="/advanced/azure-keyvault">
+    Secure secrets using Azure KeyVault
+  </Card>
+  <Card title="Enable Telemetry" icon="chart-line" href="/advanced/telemetry">
+    Monitor runner and workflow performance
+  </Card>
+</CardGroup>

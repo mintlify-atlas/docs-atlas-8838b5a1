@@ -1,0 +1,529 @@
+---
+title: Telemetry and Monitoring
+description: Enable partner telemetry and monitor AL-Go workflows with Application Insights for comprehensive DevOps observability
+---
+
+AL-Go for GitHub includes built-in telemetry capabilities to help you monitor workflow performance, troubleshoot issues, and gain insights into your DevOps processes.
+
+## Telemetry Overview
+
+<CardGroup cols={2}>
+  <Card title="Partner Telemetry" icon="chart-bar">
+    Send AL-Go telemetry to your own Application Insights for custom analysis and dashboards
+  </Card>
+  <Card title="Microsoft Telemetry" icon="microsoft">
+    Optionally share workflow data with Microsoft for product improvements and support
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+Enable telemetry by adding your Application Insights connection string to the AL-Go settings file.
+
+### Enable Partner Telemetry
+
+Add the following setting to `.github/AL-Go-Settings.json`:
+
+```json
+{
+  "PartnerTelemetryConnectionString": "<your-application-insights-connection-string>"
+}
+```
+
+<Steps>
+  <Step title="Create Application Insights">
+    If you don't have an Application Insights resource:
+    1. Navigate to Azure Portal
+    2. Create a new Application Insights resource
+    3. Copy the connection string from the Overview page
+  </Step>
+  
+  <Step title="Add Connection String">
+    Update your AL-Go settings file with the connection string.
+  </Step>
+  
+  <Step title="Commit and Run Workflow">
+    Commit the settings change and run any AL-Go workflow to start collecting telemetry.
+  </Step>
+</Steps>
+
+<Note>
+Your connection string is typically in the format:
+`InstrumentationKey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx;IngestionEndpoint=https://....`
+</Note>
+
+### Microsoft Telemetry Options
+
+AL-Go sends basic telemetry to Microsoft by default. You can control this behavior:
+
+<Tabs>
+  <Tab title="Opt Out">
+    Disable Microsoft telemetry completely:
+
+    ```json
+    {
+      "microsoftTelemetryConnectionString": ""
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Extended Telemetry">
+    Enable extended telemetry to help Microsoft investigate issues:
+
+    ```json
+    {
+      "SendExtendedTelemetryToMicrosoft": true
+    }
+    ```
+
+    <Note>
+    Extended telemetry includes additional diagnostic information helpful for troubleshooting repository-specific issues.
+    </Note>
+  </Tab>
+  
+  <Tab title="Default (Basic)">
+    Keep the default settings to send basic telemetry:
+
+    ```json
+    {}
+    ```
+
+    No configuration needed - basic telemetry is enabled by default.
+  </Tab>
+</Tabs>
+
+## Telemetry Events
+
+AL-Go emits four main types of telemetry events:
+
+<CardGroup cols={2}>
+  <Card title="Workflow Completed" icon="check-circle">
+    Emitted when an AL-Go workflow finishes successfully
+  </Card>
+  <Card title="Workflow Failed" icon="x-circle">
+    Emitted when an AL-Go workflow fails or times out
+  </Card>
+  <Card title="Action Completed" icon="play-circle">
+    Emitted when an AL-Go action completes successfully
+  </Card>
+  <Card title="Action Failed" icon="exclamation-circle">
+    Emitted when an AL-Go action encounters an error
+  </Card>
+</CardGroup>
+
+### Common Telemetry Dimensions
+
+All telemetry events include these standard dimensions:
+
+| Dimension | Description |
+|-----------|-------------|
+| PowerShellVersion | Version of PowerShell executing the action |
+| BcContainerHelperVersion | Version of BcContainerHelper (if imported) |
+| WorkflowName | Name of the GitHub Actions workflow |
+| RunnerOs | Operating system of the runner (Windows, Linux, macOS) |
+| RunId | Unique GitHub Actions run ID |
+| RunNumber | Sequential run number |
+| RunAttempt | Retry attempt number |
+| Repository | Repository identifier |
+| RepositoryOwner | GitHub organization or user owning the repository |
+| RepositoryName | Full repository name (owner/repo) |
+| RefName | Git reference (branch or tag) that triggered the workflow |
+| ALGoVersion | Version of AL-Go being used |
+
+## Event Details
+
+### AL-Go Workflow Ran
+
+**Message:** `AL-Go workflow ran`  
+**Severity Level:** 1 (Informational)
+
+**Additional Dimensions:**
+
+| Dimension | Description |
+|-----------|-------------|
+| WorkflowConclusion | Success or Cancelled |
+| WorkflowDuration | Total workflow execution time (seconds) |
+| RepoType | AppSource or PTE |
+| GitHubRunner | Value of the gitHubRunner setting |
+| RunsOn | Value of the runs-on setting |
+
+### AL-Go Workflow Failed
+
+**Message:** `AL-Go workflow failed`  
+**Severity Level:** 3 (Error)
+
+**Additional Dimensions:**
+
+| Dimension | Description |
+|-----------|-------------|
+| WorkflowConclusion | Failure or TimedOut |
+| WorkflowDuration | Total workflow execution time (seconds) |
+| RepoType | AppSource or PTE |
+| GitHubRunner | Value of the gitHubRunner setting |
+| RunsOn | Value of the runs-on setting |
+
+### AL-Go Action Ran
+
+**Message:** `AL-Go action ran`  
+**Severity Level:** 1 (Informational)
+
+**Additional Dimensions:**
+
+| Dimension | Description |
+|-----------|-------------|
+| ActionDuration | Action execution time (seconds) |
+| RunnerEnvironment | GitHub-hosted or self-hosted |
+
+### AL-Go Action Failed
+
+**Message:** `AL-Go action failed`  
+**Severity Level:** 3 (Error)
+
+**Additional Dimensions:**
+
+| Dimension | Description |
+|-----------|-------------|
+| ErrorMessage | The error message that caused the failure |
+| RunnerEnvironment | GitHub-hosted or self-hosted |
+
+### Test Results
+
+AL-Go logs telemetry for three types of test results:
+
+- `AL-Go Test Results - Tests`
+- `AL-Go Test Results - Page scripting Tests`
+- `AL-Go Test Results - BCPT Tests`
+
+**Severity Level:** 1 (Informational)
+
+**Test Dimensions:**
+
+| Dimension | Description |
+|-----------|-------------|
+| TotalTests | Total number of tests executed |
+| TotalPassed | Number of tests that passed |
+| TotalFailed | Number of tests that failed |
+| TotalSkipped | Number of tests skipped |
+| TotalTime | Total test execution time (not available for BCPT) |
+
+<Note>
+The `TotalTime` dimension is only available for standard tests and page scripting tests. BCPT test results do not include timing information.
+</Note>
+
+## Querying Telemetry Data
+
+Use Kusto Query Language (KQL) to analyze your AL-Go telemetry in Application Insights.
+
+### Workflow Completion Query
+
+Get all completed workflow runs from the last 7 days:
+
+```kusto
+traces
+| where timestamp > ago(7d)
+| project   timestamp,
+            message,
+            severityLevel,
+            RepositoryOwner = tostring(customDimensions.RepositoryOwner),
+            RepositoryName = tostring(customDimensions.RepositoryName),
+            RunId = tostring(customDimensions.RunId),
+            RunNumber = tostring(customDimensions.RunNumber),
+            RunAttempt = tostring(customDimensions.RunAttempt),
+            WorkflowName = tostring(customDimensions.WorkflowName),
+            WorkflowConclusion = tostring(customDimensions.WorkflowConclusion),
+            WorkflowDurationMinutes = round(todouble(customDimensions.WorkflowDuration) / 60, 2),
+            ALGoVersion = tostring(customDimensions.ALGoVersion),
+            RefName = tostring(customDimensions.RefName)
+| extend HtmlUrl = strcat("https://github.com/", RepositoryName, "/actions/runs/", RunId)
+| where message contains "AL-Go workflow"
+```
+
+### Action Completion Query
+
+Analyze individual action performance:
+
+```kusto
+traces
+| where timestamp > ago(7d)
+| project   timestamp,
+            message,
+            severityLevel,
+            RepositoryOwner = tostring(customDimensions.RepositoryOwner),
+            RepositoryName = tostring(customDimensions.RepositoryName),
+            RunId = tostring(customDimensions.RunId),
+            RunNumber = tostring(customDimensions.RunNumber),
+            RunAttempt = tostring(customDimensions.RunAttempt),
+            WorkflowName = tostring(customDimensions.WorkflowName),
+            WorkflowConclusion = tostring(customDimensions.WorkflowConclusion),
+            WorkflowDuration = todouble(customDimensions.WorkflowDuration),
+            ALGoVersion = tostring(customDimensions.ALGoVersion),
+            RefName = tostring(customDimensions.RefName),
+            RunnerOs = tostring(customDimensions.RunnerOs),
+            RunnerEnvironment = tostring(customDimensions.RunnerEnvironment),
+            ErrorMessage = tostring(customDimensions.ErrorMessage),
+            ActionDurationSeconds = todouble(customDimensions.ActionDuration)
+| extend HtmlUrl = strcat("https://github.com/", RepositoryName, "/actions/runs/", RunId)
+| where message contains "AL-Go action"
+```
+
+### Test Results Query
+
+Track test execution and pass rates:
+
+```kusto
+traces
+| where timestamp > ago(7d)
+| project   timestamp,
+            message,
+            severityLevel,
+            RepositoryOwner = tostring(customDimensions.RepositoryOwner),
+            RepositoryName = tostring(customDimensions.RepositoryName),
+            RunId = tostring(customDimensions.RunId),
+            RunNumber = tostring(customDimensions.RunNumber),
+            RunAttempt = tostring(customDimensions.RunAttempt),
+            RefName = tostring(customDimensions.RefName),
+            TotalTests = todouble(customDimensions.TotalTests),
+            TotalFailed = todouble(customDimensions.TotalFailed),
+            TotalSkipped = todouble(customDimensions.TotalSkipped),
+            TotalPassed = todouble(customDimensions.TotalPassed),
+            TotalTime = todouble(customDimensions.TotalTime)
+| extend HtmlUrl = strcat("https://github.com/", RepositoryName, "/actions/runs/", RunId)
+| where message contains "AL-Go Test Results"
+```
+
+## Azure Data Explorer Dashboard
+
+AL-Go provides a template dashboard for Azure Data Explorer to visualize your telemetry.
+
+<Steps>
+  <Step title="Download Template">
+    Download the telemetry dashboard template from the [AL-Go repository](https://github.com/microsoft/AL-Go/blob/main/Scenarios/resources/telemetrydashboard.json).
+  </Step>
+  
+  <Step title="Configure Dashboard">
+    Open the downloaded `telemetrydashboard.json` file in an editor and replace:
+
+    - **database**: Your Application Insights resource name
+    - **clusterUri**: Your Application Insights Data Explorer URI:
+      ```
+      https://ade.applicationinsights.io/subscriptions/YourSubscriptionId/resourcegroups/YourResourceGroup/providers/microsoft.insights/components/YourApplicationInsightsName
+      ```
+  </Step>
+  
+  <Step title="Import Dashboard">
+    1. Navigate to [https://dataexplorer.azure.com/dashboards](https://dataexplorer.azure.com/dashboards)
+    2. Click the arrow next to "New Dashboard"
+    3. Select "Import dashboard from file"
+    4. Upload your configured JSON file
+  </Step>
+</Steps>
+
+## Custom Dashboards and Alerts
+
+### Performance Monitoring Dashboard
+
+Create a custom workbook to track workflow performance:
+
+<Tabs>
+  <Tab title="Workflow Duration Trends">
+    ```kusto
+    traces
+    | where timestamp > ago(30d)
+    | where message contains "AL-Go workflow"
+    | project timestamp, 
+              WorkflowName = tostring(customDimensions.WorkflowName),
+              DurationMinutes = round(todouble(customDimensions.WorkflowDuration) / 60, 2)
+    | summarize avg(DurationMinutes), max(DurationMinutes), min(DurationMinutes) by bin(timestamp, 1d), WorkflowName
+    | render timechart
+    ```
+  </Tab>
+  
+  <Tab title="Success Rate">
+    ```kusto
+    traces
+    | where timestamp > ago(7d)
+    | where message contains "AL-Go workflow"
+    | project timestamp,
+              WorkflowName = tostring(customDimensions.WorkflowName),
+              Conclusion = tostring(customDimensions.WorkflowConclusion)
+    | summarize Total = count(), 
+                Successful = countif(Conclusion == "Success"),
+                Failed = countif(Conclusion == "Failure")
+              by WorkflowName
+    | extend SuccessRate = round(100.0 * Successful / Total, 2)
+    | project WorkflowName, Total, Successful, Failed, SuccessRate
+    | order by SuccessRate asc
+    ```
+  </Tab>
+  
+  <Tab title="Test Results Summary">
+    ```kusto
+    traces
+    | where timestamp > ago(7d)
+    | where message contains "AL-Go Test Results"
+    | project timestamp,
+              RepositoryName = tostring(customDimensions.RepositoryName),
+              TotalTests = todouble(customDimensions.TotalTests),
+              TotalPassed = todouble(customDimensions.TotalPassed),
+              TotalFailed = todouble(customDimensions.TotalFailed)
+    | summarize TotalTests = sum(TotalTests),
+                TotalPassed = sum(TotalPassed),
+                TotalFailed = sum(TotalFailed)
+              by bin(timestamp, 1d)
+    | extend PassRate = round(100.0 * TotalPassed / TotalTests, 2)
+    | render timechart
+    ```
+  </Tab>
+</Tabs>
+
+### Configure Alerts
+
+Set up alerts for critical events:
+
+<Steps>
+  <Step title="Workflow Failure Alert">
+    Create an alert when workflows fail:
+
+    ```kusto
+    traces
+    | where timestamp > ago(5m)
+    | where message contains "AL-Go workflow failed"
+    | project timestamp,
+              RepositoryName = tostring(customDimensions.RepositoryName),
+              WorkflowName = tostring(customDimensions.WorkflowName),
+              RunId = tostring(customDimensions.RunId)
+    | extend HtmlUrl = strcat("https://github.com/", RepositoryName, "/actions/runs/", RunId)
+    ```
+
+    Set threshold to trigger when result count > 0.
+  </Step>
+  
+  <Step title="Test Failure Alert">
+    Alert when test pass rate drops below threshold:
+
+    ```kusto
+    traces
+    | where timestamp > ago(15m)
+    | where message contains "AL-Go Test Results"
+    | project TotalTests = todouble(customDimensions.TotalTests),
+              TotalPassed = todouble(customDimensions.TotalPassed),
+              RepositoryName = tostring(customDimensions.RepositoryName)
+    | extend PassRate = 100.0 * TotalPassed / TotalTests
+    | where PassRate < 90
+    ```
+  </Step>
+  
+  <Step title="Performance Degradation Alert">
+    Alert when workflow duration exceeds normal range:
+
+    ```kusto
+    traces
+    | where timestamp > ago(1h)
+    | where message contains "AL-Go workflow ran"
+    | project WorkflowName = tostring(customDimensions.WorkflowName),
+              Duration = todouble(customDimensions.WorkflowDuration)
+    | summarize AvgDuration = avg(Duration) by WorkflowName
+    | where AvgDuration > 1800  // Alert if average exceeds 30 minutes
+    ```
+  </Step>
+</Steps>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Separate Workspaces" icon="layer-group">
+    Create dedicated Application Insights resources for different environments (dev, test, prod)
+  </Card>
+  <Card title="Set Retention Policies" icon="clock">
+    Configure appropriate data retention based on compliance requirements and cost considerations
+  </Card>
+  <Card title="Create Workbooks" icon="book">
+    Build custom Azure Monitor workbooks for your team's specific metrics and KPIs
+  </Card>
+  <Card title="Regular Review" icon="calendar">
+    Schedule periodic reviews of telemetry data to identify trends and optimization opportunities
+  </Card>
+</CardGroup>
+
+### Security and Compliance
+
+<Warning>
+**Important considerations for telemetry:**
+
+- Telemetry data may contain repository names, workflow names, and error messages
+- Ensure your Application Insights workspace has appropriate access controls
+- Review data retention requirements for compliance
+- Do not include sensitive data in workflow or repository names
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="No telemetry data appearing">
+    Check:
+    - Connection string is correct in AL-Go settings
+    - Application Insights resource is active
+    - Workflows have run after enabling telemetry
+    - No firewall blocking access to Application Insights ingestion endpoint
+  </Accordion>
+  
+  <Accordion title="Incomplete telemetry data">
+    Verify:
+    - PowerShell execution policy allows AL-Go scripts to run
+    - No network timeouts when sending telemetry
+    - Application Insights sampling is not too aggressive
+  </Accordion>
+  
+  <Accordion title="Query returns no results">
+    Ensure:
+    - Time range in query covers when workflows ran
+    - customDimensions are queried correctly (case-sensitive)
+    - Message filter matches exact telemetry messages
+    - Data ingestion latency (may take 1-2 minutes)
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Scenarios
+
+### Multi-Repository Dashboards
+
+Track telemetry across all repositories in your organization:
+
+```kusto
+traces
+| where timestamp > ago(7d)
+| where message contains "AL-Go workflow"
+| summarize Runs = count(),
+            Successful = countif(tostring(customDimensions.WorkflowConclusion) == "Success"),
+            Failed = countif(tostring(customDimensions.WorkflowConclusion) == "Failure"),
+            AvgDuration = round(avg(todouble(customDimensions.WorkflowDuration)) / 60, 2)
+          by RepositoryName = tostring(customDimensions.RepositoryName)
+| extend SuccessRate = round(100.0 * Successful / Runs, 2)
+| order by Runs desc
+```
+
+### Correlate with Azure DevOps
+
+If using AL-Go with other DevOps tools, correlate data using custom dimensions:
+
+```json
+{
+  "PartnerTelemetryConnectionString": "<your-connection-string>",
+  "CustomTelemetryDimensions": {
+    "Team": "Platform",
+    "Project": "ERP-Extension",
+    "Environment": "Production"
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Azure KeyVault" icon="key" href="/advanced/azure-keyvault">
+    Secure your secrets with Azure KeyVault integration
+  </Card>
+  <Card title="Customization" icon="wrench" href="/advanced/customization">
+    Customize AL-Go workflows for your needs
+  </Card>
+</CardGroup>

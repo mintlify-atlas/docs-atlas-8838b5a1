@@ -1,0 +1,699 @@
+---
+title: Advanced Settings
+description: Expert-level settings for artifacts, versioning, dependencies, and code analysis
+---
+
+Advanced settings provide fine-grained control over build artifacts, versioning strategies, dependency management, code analysis, and containerless compilation. These settings are for users with knowledge of GitHub workflows, Business Central artifacts, and AL development.
+
+<Warning>
+These settings might require knowledge about GitHub Workflows/Actions, YAML, Docker, and PowerShell. Please only change these settings after careful consideration, as they might change in future versions.
+</Warning>
+
+## Artifact Configuration
+
+<ParamField path="artifact" type="string">
+  Determines the artifacts used for building and testing the app.
+  
+  Can be either:
+  - Absolute pointer to Business Central artifacts: `https://...` (rarely used)
+  - Search specification: `<storageaccount>/<type>/<version>/<country>/<select>`
+  
+  If not specified, uses the latest sandbox artifacts from the country specified in the `country` setting.
+  
+  <Note>
+  If version is `*`, the application dependency from your app.json determines which artifacts to use. If select is `first`, you get the first matching artifacts. If `latest`, you get the latest artifacts with the same major.minor as your application dependency.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "artifact": "bcartifacts/sandbox/21.0/us/latest"
+  }
+  ```
+</ParamField>
+
+<ParamField path="additionalCountries" type="array" default={[]}>
+  Additional countries to compile, publish, and test your app against during workflows.
+  
+  Can be different in NextMajor and NextMinor workflows by specifying in workflow settings file.
+  
+  **Example:**
+  ```json
+  {
+    "additionalCountries": [
+      "dk",
+      "de",
+      "fr"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="companyName" type="string">
+  Company name selected in the database for running the CI/CD workflow.
+  
+  Default is to use the default company in the selected Business Central localization.
+  
+  **Example:**
+  ```json
+  {
+    "companyName": "CRONUS International Ltd."
+  }
+  ```
+</ParamField>
+
+## Versioning Strategy
+
+<ParamField path="versioningStrategy" type="number" default={0}>
+  Determines how versioning is performed. Version number format: **Major**.**Minor**.**Build**.**Revision**
+  
+  **Major** and **Minor** are read from app.json. **Build** and **Revision** are calculated:
+  
+  **Strategy 0:**
+  - Build = GitHub run_number + runNumberOffset
+  - Revision = GitHub run_attempt - 1
+  
+  **Strategy 2:**
+  - Build = current date as yyyyMMdd (UTC)
+  - Revision = current time as hhmmss (UTC)
+  
+  **Strategy 3:**
+  - Build = from app.json
+  - Revision = GitHub run_number
+  
+  **Strategy 15:**
+  - Build = max value
+  - Revision = GitHub run_number
+  - <Warning>Use with caution - recommended only for non-official artifacts (PR builds, test workflows)</Warning>
+  
+  **+16 modifier:**
+  Adding 16 to above strategies uses `repoVersion` instead of Major.Minor from app.json (also Build if strategy is 3+16)
+  
+  **Example:**
+  ```json
+  {
+    "versioningStrategy": 2
+  }
+  ```
+</ParamField>
+
+<ParamField path="runNumberOffset" type="number" default={0}>
+  When using versioningStrategy 0, offset applied to GitHub RUN_NUMBER.
+  
+  Use negative number to reset after increasing Major/Minor, or positive for starting offset.
+  
+  **Example:**
+  ```json
+  {
+    "runNumberOffset": 1000
+  }
+  ```
+</ParamField>
+
+## Dependency Management
+
+<ParamField path="updateDependencies" type="boolean" default={false}>
+  Builds your app against the first compatible Business Central build and sets dependency version numbers in app.json during build.
+  
+  All version numbers in the built app are set to the version used during compilation.
+  
+  <Warning>
+  When enabled, application versions from BC Artifact are stamped into app.json. Not all app versions in BC Artifacts are shipped in BC SaaS, which can cause AppSource validation failures. Not recommended for AppSource deployment.
+  </Warning>
+  
+  **Example:**
+  ```json
+  {
+    "updateDependencies": false
+  }
+  ```
+</ParamField>
+
+<ParamField path="generateDependencyArtifact" type="boolean" default={false}>
+  When true, CI/CD pipeline generates an artifact with external dependencies used for building the apps.
+  
+  **Example:**
+  ```json
+  {
+    "generateDependencyArtifact": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="installApps" type="array" default={[]}>
+  Array of 3rd party dependency apps not available through appDependencyProbingPaths.
+  
+  Can be secure URLs or paths to folders/files relative to the project. Apps are downloaded and installed before compiling and installing your apps.
+  
+  <Note>
+  Specify `${{SECRETNAME}}` in a URL to replace with the value of secret SECRETNAME.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "installApps": [
+      "https://example.com/dependencies/app.zip",
+      "dependencies/local-app.app"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="installTestApps" type="array" default={[]}>
+  Array of 3rd party test dependency apps not available through appDependencyProbingPaths.
+  
+  Apps are downloaded and installed before compiling and installing test apps. Parentheses around the setting indicate the test in this app will NOT be run, only installed.
+  
+  <Note>
+  Specify `${{SECRETNAME}}` in a URL to replace with the value of secret SECRETNAME.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "installTestApps": [
+      "https://example.com/testapps/test-helper.app"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="installOnlyReferencedApps" type="boolean" default={true}>
+  By default, only apps referenced in the dependency chain are installed from installApps, installTestApps, and appDependencyProbingPath.
+  
+  Set to false to install all apps found.
+  
+  **Example:**
+  ```json
+  {
+    "installOnlyReferencedApps": false
+  }
+  ```
+</ParamField>
+
+<ParamField path="runTestsInAllInstalledTestApps" type="boolean" default={false}>
+  **PREVIEW:** By default, AL-Go publishes test apps built in previous jobs but doesn't execute the tests.
+  
+  Set to true to run tests in all test apps produced by previous jobs.
+  
+  **Example:**
+  ```json
+  {
+    "runTestsInAllInstalledTestApps": true
+  }
+  ```
+</ParamField>
+
+## Configuration Packages
+
+<ParamField path="configPackages" type="array" default={[]}>
+  Array of configuration packages applied to the build container before running tests.
+  
+  Can be relative paths within the project or: STANDARD, EXTENDED, or EVALUATION for rapidstart packages that come with Business Central.
+  
+  **Example:**
+  ```json
+  {
+    "configPackages": [
+      "STANDARD",
+      "config/custom-data.rapidstart"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="configPackages.<country>" type="array" default={[]}>
+  Country-specific configuration packages applied to the build container for the specified country.
+  
+  **Example:**
+  ```json
+  {
+    "configPackages.dk": [
+      "EXTENDED"
+    ]
+  }
+  ```
+</ParamField>
+
+## Code Analysis
+
+<ParamField path="enableCodeCop" type="boolean" default={false}>
+  Enable the CodeCop analyzer when building.
+  
+  **Example:**
+  ```json
+  {
+    "enableCodeCop": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="enableUICop" type="boolean" default={false}>
+  Enable the UICop analyzer when building.
+  
+  **Example:**
+  ```json
+  {
+    "enableUICop": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="customCodeCops" type="array" default={[]}>
+  Array of paths or URLs to custom Code Cop DLLs to enable when building.
+  
+  **Example:**
+  ```json
+  {
+    "customCodeCops": [
+      "https://example.com/codecops/custom-cop.dll",
+      "codecops/local-cop.dll"
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="enableCodeAnalyzersOnTestApps" type="boolean" default={false}>
+  Enable code analyzers when building test apps.
+  
+  **Example:**
+  ```json
+  {
+    "enableCodeAnalyzersOnTestApps": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="trackALAlertsInGitHub" type="boolean" default={false}>
+  Upload and track AL code analysis results in the GitHub security tab.
+  
+  If Advanced Security is enabled, new AL code alerts are posted in PRs that introduce them.
+  
+  <Note>
+  Must be enabled at repo level but can be optionally disabled per project. Currently only enabled for warnings. Error support coming in future release.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "trackALAlertsInGitHub": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="failOn" type="string" default="error">
+  Specifies what the pipeline will fail on.
+  
+  **Allowed values:**
+  - `none` - Don't fail on warnings or errors
+  - `warning` - Fail on any warning
+  - `newWarning` - Fail on new warnings in PRs, behave like `error` for normal builds
+  - `error` - Fail on errors only
+  
+  **Example:**
+  ```json
+  {
+    "failOn": "newWarning"
+  }
+  ```
+</ParamField>
+
+<ParamField path="rulesetFile" type="string">
+  Filename of the custom ruleset file.
+  
+  **Example:**
+  ```json
+  {
+    "rulesetFile": "custom.ruleset.json"
+  }
+  ```
+</ParamField>
+
+<ParamField path="enableExternalRulesets" type="boolean" default={false}>
+  Allow external rule references in the ruleset.
+  
+  **Example:**
+  ```json
+  {
+    "enableExternalRulesets": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="reportSuppressedDiagnostics" type="boolean" default={false}>
+  Report diagnostics suppressed in code using `#pragma warning disable <id>`.
+  
+  Useful to ensure no warnings are suppressed in your code.
+  
+  **Example:**
+  ```json
+  {
+    "reportSuppressedDiagnostics": true
+  }
+  ```
+</ParamField>
+
+## AL Language Extension
+
+<ParamField path="vsixFile" type="string" default="default">
+  Determines which version of the AL Language Extension to use for building apps.
+  
+  **Values:**
+  - `default` - Use AL Language Extension that ships with the BC version
+  - `latest` - Always download the latest from marketplace
+  - `preview` - Always download the preview from marketplace
+  - Direct download URL pointing to the AL Language VSIX file
+  
+  **Example:**
+  ```json
+  {
+    "vsixFile": "latest"
+  }
+  ```
+</ParamField>
+
+## Code Signing
+
+<ParamField path="codeSignCertificateUrlSecretName" type="string" default="CodeSignCertificateUrl">
+  Name (NOT the secret) of the code signing certificate URL secret.
+  
+  <Note>
+  There is a new way of signing apps described in the [Codesigning documentation](https://github.com/microsoft/AL-Go/blob/main/Scenarios/Codesigning.md).
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "codeSignCertificateUrlSecretName": "MyCodeSignCertUrl"
+  }
+  ```
+</ParamField>
+
+<ParamField path="codeSignCertificatePasswordSecretName" type="string" default="CodeSignCertificatePassword">
+  Name (NOT the secret) of the code signing certificate password secret.
+  
+  **Example:**
+  ```json
+  {
+    "codeSignCertificatePasswordSecretName": "MyCodeSignCertPassword"
+  }
+  ```
+</ParamField>
+
+<ParamField path="keyVaultCodesignCertificateName" type="string">
+  Name of a certificate stored in your KeyVault for code signing.
+  
+  Requires Azure KeyVault enabled in your AL-Go project.
+  
+  **Example:**
+  ```json
+  {
+    "keyVaultCodesignCertificateName": "MySigningCert"
+  }
+  ```
+</ParamField>
+
+<ParamField path="trustedSigning" type="object">
+  Structure for enabling Azure Trusted Signing.
+  
+  **Properties:**
+  - **Account** - Name of your trusted signing account
+  - **Endpoint** - Endpoint URL (e.g., https://weu.codesigning.azure.net)
+  - **CertificateProfile** - Certificate profile in your account
+  
+  <Note>
+  Your Azure_Credentials secret (Microsoft Entra ID App or Managed identity) needs the `Trusted Signing Certificate Profile Signer` role in the Trusted Signing Account.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "trustedSigning": {
+      "Account": "MyTrustedSigningAccount",
+      "Endpoint": "https://weu.codesigning.azure.net",
+      "CertificateProfile": "MyProfile"
+    }
+  }
+  ```
+</ParamField>
+
+## Application Insights
+
+<ParamField path="applicationInsightsConnectionStringSecretName" type="string" default="applicationInsightsConnectionString">
+  Name (NOT the secret) of a secret containing the Application Insights connection string for the apps.
+  
+  **Example:**
+  ```json
+  {
+    "applicationInsightsConnectionStringSecretName": "AppInsightsConnStr"
+  }
+  ```
+</ParamField>
+
+## Storage and Delivery
+
+<ParamField path="storageContextSecretName" type="string" default="StorageContext">
+  Name (NOT the secret) of a secret containing storage account context.
+  
+  Should contain JSON with StorageAccountName, ContainerName, BlobName, and StorageAccountKey or SAS Token. If exists, AL-Go uploads builds to this storage account for every successful build.
+  
+  Use `New-ALGoStorageContext` from BcContainerHelper to create the JSON structure.
+  
+  **Example:**
+  ```json
+  {
+    "storageContextSecretName": "MyStorageContext"
+  }
+  ```
+</ParamField>
+
+## NuGet Feeds
+
+<ParamField path="trustMicrosoftNuGetFeeds" type="boolean" default={true}>
+  Unless set to false, AL-Go trusts NuGet feeds provided by Microsoft.
+  
+  Microsoft feeds contain all Microsoft apps, symbols, and symbols for all AppSource apps.
+  
+  **Example:**
+  ```json
+  {
+    "trustMicrosoftNuGetFeeds": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="trustedNuGetFeeds" type="array" default={[]}>
+  Array of NuGet feed specifications for dependency resolution.
+  
+  **Each feed specification includes:**
+  - **url** - Feed URL (required)
+  - **authTokenSecret** - Secret name containing auth token for private feeds
+  - **patterns** - Package ID patterns to trust (default: *)
+  - **fingerprints** - Array of certificate fingerprints for signed packages
+  
+  **Example:**
+  ```json
+  {
+    "trustedNuGetFeeds": [
+      {
+        "url": "https://pkgs.dev.azure.com/myorg/apps/_packaging/myrepo/nuget/v3/index.json",
+        "authTokenSecret": "AzureDevOpsToken",
+        "patterns": ["MyOrg.*"],
+        "fingerprints": []
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="nuGetFeedSelectMode" type="string" default="LatestMatching">
+  Select mode when finding BC app packages from NuGet feeds based on app.json dependency version.
+  
+  **Options:**
+  - `Earliest` - Earliest version of the package
+  - `EarliestMatching` - Earliest version also compatible with BC version
+  - `Exact` - Exact version of the package
+  - `Latest` - Latest version of the package
+  - `LatestMatching` - Latest version also compatible with BC version
+  
+  **Example:**
+  ```json
+  {
+    "nuGetFeedSelectMode": "LatestMatching"
+  }
+  ```
+</ParamField>
+
+## Container Settings
+
+<ParamField path="assignPremiumPlan" type="boolean" default={false}>
+  Create build container with AssignPremiumPlan set, giving auto-created user Premium Plan.
+  
+  Needed if your tests require premium plan enabled.
+  
+  **Example:**
+  ```json
+  {
+    "assignPremiumPlan": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="enableTaskScheduler" type="boolean" default={false}>
+  Create build container with Task Scheduler running.
+  
+  **Example:**
+  ```json
+  {
+    "enableTaskScheduler": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="memoryLimit" type="string" default="8G">
+  Specifies the memory limit for the build container.
+  
+  By default, left to BcContainerHelper (currently 8G).
+  
+  **Example:**
+  ```json
+  {
+    "memoryLimit": "16G"
+  }
+  ```
+</ParamField>
+
+<ParamField path="cacheImageName" type="string" default="my">
+  When using self-hosted runners, specifies the prefix for the Docker image created for increased performance.
+  
+  **Example:**
+  ```json
+  {
+    "cacheImageName": "bcartifacts"
+  }
+  ```
+</ParamField>
+
+<ParamField path="cacheKeepDays" type="number" default={3}>
+  When using self-hosted runners, specifies days Docker images are cached before cleanup.
+  
+  <Warning>
+  Setting to 0 flushes cache before every build and causes other running builds on the same host to fail.
+  </Warning>
+  
+  **Example:**
+  ```json
+  {
+    "cacheKeepDays": 7
+  }
+  ```
+</ParamField>
+
+## Containerless Compilation
+
+<ParamField path="useCompilerFolder" type="boolean" default={false}>
+  Use containerless compiling.
+  
+  Unless `doNotPublishApps` is also true, no performance advantage since AL-Go still needs a container for publishing and testing.
+  
+  <Note>
+  When using this setting, sign apps using the new signing mechanism described in the [Codesigning documentation](https://github.com/microsoft/AL-Go/blob/main/Scenarios/Codesigning.md).
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "useCompilerFolder": true
+  }
+  ```
+</ParamField>
+
+## Upgrade Settings
+
+<ParamField path="skipUpgrade" type="boolean" default={false}>
+  Signal to the pipeline to NOT run upgrade and ignore previous releases of the app.
+  
+  **Example:**
+  ```json
+  {
+    "skipUpgrade": true
+  }
+  ```
+</ParamField>
+
+## AppSource-Specific Advanced Settings
+
+<ParamField path="appSourceContextSecretName" type="string" default="AppSourceContext">
+  Name (NOT the secret) of a secret containing AppSource context.
+  
+  Should contain JSON with ClientID, TenantID, and ClientSecret or RefreshToken. If exists, AL-Go can upload builds to AppSource validation.
+  
+  **Example:**
+  ```json
+  {
+    "appSourceContextSecretName": "AppSourceContext"
+  }
+  ```
+</ParamField>
+
+<ParamField path="keyVaultCertificateUrlSecretName" type="string">
+  For AppSource App KeyVault access - name of secret containing certificate URL.
+</ParamField>
+
+<ParamField path="keyVaultCertificatePasswordSecretName" type="string">
+  For AppSource App KeyVault access - name of secret containing certificate password.
+</ParamField>
+
+<ParamField path="keyVaultClientIdSecretName" type="string">
+  For AppSource App KeyVault access - name of secret containing client ID.
+</ParamField>
+
+## Expert-Level Settings
+
+<ParamField path="repoName" type="string">
+  The name of the repository (defaults to GitHub repository name).
+  
+  **Example:**
+  ```json
+  {
+    "repoName": "my-custom-repo-name"
+  }
+  ```
+</ParamField>
+
+<ParamField path="applicationDependency" type="string" default="18.0.0.0">
+  Lowest Business Central version supported by your app.
+  
+  Build fails early if artifacts are lower than this. Calculated by reading app.json but cannot be lower than this setting.
+  
+  **Example:**
+  ```json
+  {
+    "applicationDependency": "20.0.0.0"
+  }
+  ```
+</ParamField>
+
+<ParamField path="BcContainerHelperVersion" type="string" default="latest">
+  Specific version of BcContainerHelper to use.
+  
+  **Values:**
+  - `latest` - Latest released version
+  - `preview` - Latest preview version
+  - `dev` - Dev branch of containerhelper
+  - Specific version (e.g., "3.0.8")
+  
+  **Example:**
+  ```json
+  {
+    "BcContainerHelperVersion": "preview"
+  }
+  ```
+</ParamField>
+
+## Related Pages
+
+- [Conditional Settings](/settings/conditional) - Apply settings based on conditions
+- [Secrets Overview](/settings/secrets-overview) - Configure secrets for AL-Go
+- [Azure KeyVault](/settings/azure-keyvault) - Use Azure KeyVault for secrets

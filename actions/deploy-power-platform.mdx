@@ -1,0 +1,180 @@
+---
+title: Deploy Power Platform
+description: Deploy Power Platform solutions to target environments
+---
+
+The Deploy Power Platform action deploys Power Platform solutions to target environments. It supports deploying from both built artifacts and unpacked solution folders, with authentication via username/password or application ID.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/DeployPowerPlatform@v5.0
+  with:
+    environmentName: 'Production'
+    artifactsFolder: '.artifacts'
+    deploymentEnvironmentsJson: ${{ needs.determine.outputs.DeploymentEnvironmentsJson }}
+```
+
+## Inputs
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action (powershell or pwsh)
+</ParamField>
+
+<ParamField path="environmentName" type="string" required>
+  Name of environment to deploy to
+  
+  This should match the environment name configured in your deployment settings.
+</ParamField>
+
+<ParamField path="artifactsFolder" type="string" default="">
+  Path to the downloaded artifacts to deploy (when deploying from a build)
+  
+  Should contain the built Power Platform solution .zip file.
+</ParamField>
+
+<ParamField path="solutionFolder" type="string" default="">
+  Path to the unpacked solution to deploy (when deploying from branch)
+  
+  Used for deploying directly from source without a build step.
+</ParamField>
+
+<ParamField path="deploymentEnvironmentsJson" type="string" required>
+  The settings for all Deployment Environments in compressed JSON format
+  
+  Contains authentication credentials and environment URLs for Power Platform deployments.
+</ParamField>
+
+## Example Workflows
+
+### Deploy from Build Artifacts
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: power-platform-solution
+          path: .artifacts
+      
+      - name: Deploy Power Platform Solution
+        uses: microsoft/AL-Go/Actions/DeployPowerPlatform@v5.0
+        with:
+          environmentName: 'Production'
+          artifactsFolder: '.artifacts'
+          deploymentEnvironmentsJson: ${{ secrets.DEPLOYMENT_ENVIRONMENTS }}
+```
+
+### Deploy from Source
+
+```yaml
+- name: Deploy Power Platform Solution from Source
+  uses: microsoft/AL-Go/Actions/DeployPowerPlatform@v5.0
+  with:
+    environmentName: 'Development'
+    solutionFolder: 'src/PowerPlatformSolution'
+    deploymentEnvironmentsJson: ${{ secrets.DEPLOYMENT_ENVIRONMENTS }}
+```
+
+### Complete Build and Deploy Workflow
+
+```yaml
+jobs:
+  determine:
+    runs-on: ubuntu-latest
+    outputs:
+      deploymentEnvironmentsJson: ${{ steps.determine.outputs.DeploymentEnvironmentsJson }}
+      environmentsMatrixJson: ${{ steps.determine.outputs.EnvironmentsMatrixJson }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine Deployment Environments
+        id: determine
+        uses: microsoft/AL-Go/Actions/DetermineDeploymentEnvironments@v5.0
+        with:
+          getEnvironments: '*'
+          type: 'CD'
+  
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Solution
+        uses: microsoft/AL-Go/Actions/BuildPowerPlatform@v5.0
+        with:
+          solutionFolder: 'src/MySolution'
+          outputFolder: '.artifacts'
+          outputFileName: 'MySolution'
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-platform-solution
+          path: .artifacts
+  
+  deploy:
+    needs: [determine, build]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.determine.outputs.environmentsMatrixJson) }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: power-platform-solution
+          path: .artifacts
+      
+      - name: Deploy to ${{ matrix.environment }}
+        uses: microsoft/AL-Go/Actions/DeployPowerPlatform@v5.0
+        with:
+          environmentName: ${{ matrix.environment }}
+          artifactsFolder: '.artifacts'
+          deploymentEnvironmentsJson: ${{ needs.determine.outputs.deploymentEnvironmentsJson }}
+```
+
+## Authentication
+
+The action supports two authentication methods:
+
+### Username/Password Authentication
+
+Configure your `deploymentEnvironmentsJson` with:
+```json
+{
+  "Production": {
+    "ppUserName": "user@domain.com",
+    "ppPassword": "***",
+    "ppEnvironmentUrl": "https://org.crm.dynamics.com"
+  }
+}
+```
+
+### Application ID Authentication
+
+Configure your `deploymentEnvironmentsJson` with:
+```json
+{
+  "Production": {
+    "ppTenantId": "tenant-guid",
+    "ppApplicationId": "app-guid",
+    "ppClientSecret": "***",
+    "ppEnvironmentUrl": "https://org.crm.dynamics.com"
+  }
+}
+```
+
+<Note>
+  The action automatically rebuilds the solution before deployment to inject Business Central environment details if configured.
+</Note>
+
+<Warning>
+  Store Power Platform credentials securely using GitHub secrets. Never commit credentials to your repository.
+</Warning>

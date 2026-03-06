@@ -1,0 +1,110 @@
+---
+title: Create App
+description: Create a new AL app in your AL-Go repository
+---
+
+The **Create App** action creates a new Business Central AL app in your repository with the specified configuration.
+
+## Usage
+
+```yaml
+- uses: microsoft/AL-Go/Actions/CreateApp@main
+  with:
+    type: 'PTE'
+    name: 'My App'
+    publisher: 'My Company'
+    idrange: '50000..50100'
+```
+
+## Inputs
+
+<ParamField path="type" type="string" required>
+  Type of app to create. Options:
+  - `PTE` - Per-Tenant Extension
+  - `AppSource App` - AppSource application
+  - `Test App` - Test application
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the app to create.
+</ParamField>
+
+<ParamField path="publisher" type="string" required>
+  Publisher name for the app.
+</ParamField>
+
+<ParamField path="idrange" type="string" required>
+  ID range for the app objects (e.g., `50000..50100`).
+</ParamField>
+
+<ParamField path="project" type="string" default=".">
+  Project name if the repository is setup for multiple projects. Use `.` for the root project.
+</ParamField>
+
+<ParamField path="sampleCode" type="boolean" default="false">
+  Whether to include sample code in the new app.
+</ParamField>
+
+<ParamField path="sampleSuite" type="boolean" default="false">
+  Whether to include a sample BCPT (Business Central Performance Toolkit) suite.
+</ParamField>
+
+<ParamField path="updateBranch" type="string" default="${{ github.ref_name }}">
+  Set the branch to update. Defaults to the current branch.
+</ParamField>
+
+<ParamField path="directCommit" type="boolean" default="false">
+  Whether to commit directly to the branch without creating a pull request.
+</ParamField>
+
+<ParamField path="shell" type="string" default="powershell">
+  Shell in which you want to run the action. Options: `powershell` or `pwsh`.
+</ParamField>
+
+<ParamField path="actor" type="string" default="${{ github.actor }}">
+  The GitHub actor running the action.
+</ParamField>
+
+<ParamField path="token" type="string" default="${{ github.token }}">
+  The GitHub token running the action.
+</ParamField>
+
+## Example
+
+Create a new PTE with sample code:
+
+```yaml
+name: Create New App
+on:
+  workflow_dispatch:
+    inputs:
+      appName:
+        description: 'Name of the app'
+        required: true
+      publisherName:
+        description: 'Publisher name'
+        required: true
+
+jobs:
+  create-app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: microsoft/AL-Go/Actions/CreateApp@main
+        with:
+          type: 'PTE'
+          name: ${{ github.event.inputs.appName }}
+          publisher: ${{ github.event.inputs.publisherName }}
+          idrange: '50000..50100'
+          sampleCode: true
+          directCommit: false
+```
+
+<Note>
+  The action creates the app structure with appropriate app.json configuration and optionally includes sample AL code and BCPT suites.
+</Note>
+
+<Warning>
+  Ensure the ID range doesn't conflict with existing apps in your repository. ID ranges must be unique across all apps.
+</Warning>

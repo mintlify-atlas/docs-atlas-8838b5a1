@@ -1,0 +1,463 @@
+---
+title: Conditional Settings
+description: Apply different settings based on branches, workflows, build modes, and other conditions
+---
+
+Conditional settings allow you to apply different configuration values based on specific conditions like the current branch, workflow, build mode, or user. This provides powerful flexibility for managing different behaviors across your development lifecycle.
+
+## Overview
+
+In any settings file, you can add conditional settings using the `ConditionalSettings` property. When conditions are met, the specified settings are applied on top of the base settings.
+
+## Basic Structure
+
+Conditional settings are defined as an array of objects, each containing:
+- **Conditions** - One or more condition types (branches, workflows, buildModes, etc.)
+- **Settings** - The settings to apply when all conditions are met
+
+```json
+{
+  "ConditionalSettings": [
+    {
+      "<condition-type>": ["<pattern1>", "<pattern2>"],
+      "settings": {
+        "<setting-name>": "<value>"
+      }
+    }
+  ]
+}
+```
+
+## Condition Types
+
+Conditional settings can be applied based on the following conditions:
+
+<ParamField path="repositories" type="array">
+  Settings applied to repositories matching the patterns.
+  
+  **Example:**
+  ```json
+  {
+    "ConditionalSettings": [
+      {
+        "repositories": ["bcsamples-*"],
+        "settings": {
+          "doNotSignApps": true
+        }
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="projects" type="array">
+  Settings applied to projects matching the patterns.
+  
+  **Example:**
+  ```json
+  {
+    "ConditionalSettings": [
+      {
+        "projects": ["Core", "Extensions/*"],
+        "settings": {
+          "enableCodeCop": true
+        }
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="buildModes" type="array">
+  Settings applied when building with these build modes.
+  
+  **Example:**
+  ```json
+  {
+    "ConditionalSettings": [
+      {
+        "buildModes": ["Clean"],
+        "settings": {
+          "preprocessorSymbols": ["CLEAN"]
+        }
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="branches" type="array">
+  Settings applied to branches matching the patterns.
+  
+  **Example:**
+  ```json
+  {
+    "ConditionalSettings": [
+      {
+        "branches": ["feature/*"],
+        "settings": {
+          "doNotPublishApps": true,
+          "doNotSignApps": true
+        }
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="workflows" type="array">
+  Settings applied to workflows matching the patterns.
+  
+  <Note>
+  Workflow names are sanitized before matching. Sanitization removes invalid filename characters like leading spaces, quotes, colons, slashes, and special characters. For example, `" CI/CD"` becomes `"CICD"`.
+  </Note>
+  
+  **Example:**
+  ```json
+  {
+    "ConditionalSettings": [
+      {
+        "workflows": ["CI/CD", "Pull Request Build"],
+        "settings": {
+          "failOn": "newWarning"
+        }
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+<ParamField path="users" type="array">
+  Settings applied for users matching the patterns.
+  
+  **Example:**
+  ```json
+  {
+    "ConditionalSettings": [
+      {
+        "users": ["john.doe"],
+        "settings": {
+          "doNotRunTests": true
+        }
+      }
+    ]
+  }
+  ```
+</ParamField>
+
+## Common Use Cases
+
+### Feature Branch Configuration
+
+Disable signing and publishing for feature branches to speed up development:
+
+```json
+{
+  "ConditionalSettings": [
+    {
+      "branches": ["feature/*"],
+      "settings": {
+        "doNotPublishApps": true,
+        "doNotSignApps": true,
+        "doNotRunTests": false
+      }
+    }
+  ]
+}
+```
+
+### Build Mode Preprocessor Symbols
+
+Define different preprocessor symbols for different build modes:
+
+```json
+{
+  "buildModes": ["Default", "Clean", "Debug"],
+  "ConditionalSettings": [
+    {
+      "buildModes": ["Clean"],
+      "settings": {
+        "preprocessorSymbols": ["CLEAN"]
+      }
+    },
+    {
+      "buildModes": ["Debug"],
+      "settings": {
+        "preprocessorSymbols": ["DEBUG", "TRACE"],
+        "enableCodeCop": false
+      }
+    }
+  ]
+}
+```
+
+### Workflow-Specific Settings
+
+Apply different failure thresholds for different workflows:
+
+```json
+{
+  "ConditionalSettings": [
+    {
+      "workflows": ["Pull Request Build"],
+      "settings": {
+        "failOn": "newWarning"
+      }
+    },
+    {
+      "workflows": ["CI/CD"],
+      "settings": {
+        "failOn": "error"
+      }
+    }
+  ]
+}
+```
+
+### Environment-Specific Configuration
+
+Different settings for different deployment branches:
+
+```json
+{
+  "ConditionalSettings": [
+    {
+      "branches": ["main"],
+      "settings": {
+        "environments": ["Production"],
+        "DeployToProduction": {
+          "ContinuousDeployment": false
+        }
+      }
+    },
+    {
+      "branches": ["develop"],
+      "settings": {
+        "environments": ["Development"],
+        "DeployToDevelopment": {
+          "ContinuousDeployment": true
+        }
+      }
+    }
+  ]
+}
+```
+
+### Multi-Country Testing
+
+Test additional countries only in specific workflows:
+
+```json
+{
+  "country": "us",
+  "ConditionalSettings": [
+    {
+      "workflows": ["NextMajor", "NextMinor"],
+      "settings": {
+        "additionalCountries": ["dk", "de", "fr", "gb"]
+      }
+    }
+  ]
+}
+```
+
+## Multiple Conditions
+
+You can specify multiple conditions in a single conditional settings block. **All conditions must be met** for the settings to apply:
+
+```json
+{
+  "ConditionalSettings": [
+    {
+      "branches": ["release/*"],
+      "buildModes": ["Clean"],
+      "settings": {
+        "enableCodeCop": true,
+        "enableUICop": true,
+        "failOn": "warning"
+      }
+    }
+  ]
+}
+```
+
+In this example, the settings only apply when:
+- The branch matches `release/*` AND
+- The build mode is `Clean`
+
+## Organizational Conditional Settings
+
+Conditional settings can be defined at the organizational level in `ALGoOrgSettings`:
+
+```json
+{
+  "ConditionalSettings": [
+    {
+      "repositories": ["bcsamples-*"],
+      "branches": ["features/*"],
+      "settings": {
+        "doNotSignApps": true
+      }
+    }
+  ]
+}
+```
+
+This ensures that all repositories named `bcsamples-*` in the organization won't sign apps on branches matching `features/*`.
+
+## Settings Application Order
+
+<Note>
+All conditional settings that have their conditions met are applied in the order of settings file + appearance.
+</Note>
+
+Conditional settings are evaluated and applied in this order:
+
+<Steps>
+  <Step title="Base Settings">
+    Regular settings from the current settings file are applied first
+  </Step>
+  <Step title="Conditional Settings">
+    Each conditional settings block is evaluated in order of appearance
+  </Step>
+  <Step title="Condition Matching">
+    If all conditions in a block are met, those settings are applied
+  </Step>
+  <Step title="Setting Merge">
+    Later settings override earlier settings (with merge behavior for complex types)
+  </Step>
+</Steps>
+
+### Example of Application Order
+
+```json
+{
+  "country": "us",
+  "enableCodeCop": false,
+  "ConditionalSettings": [
+    {
+      "branches": ["main"],
+      "settings": {
+        "enableCodeCop": true,
+        "failOn": "warning"
+      }
+    },
+    {
+      "branches": ["main"],
+      "buildModes": ["Clean"],
+      "settings": {
+        "enableUICop": true,
+        "failOn": "error"
+      }
+    }
+  ]
+}
+```
+
+For a build on the `main` branch with `Clean` build mode:
+1. Base: `country: us`, `enableCodeCop: false`
+2. First conditional (branch=main): `enableCodeCop: true`, `failOn: warning`
+3. Second conditional (branch=main, buildMode=Clean): `enableUICop: true`, `failOn: error`
+
+Final result: `country: us`, `enableCodeCop: true`, `enableUICop: true`, `failOn: error`
+
+## Workflow Default Inputs in Conditional Settings
+
+You can use `workflowDefaultInputs` within conditional settings to apply workflow input defaults only when certain conditions are met:
+
+```json
+{
+  "ConditionalSettings": [
+    {
+      "workflows": ["CI/CD"],
+      "settings": {
+        "workflowDefaultInputs": [
+          { "name": "directCommit", "value": true }
+        ]
+      }
+    },
+    {
+      "branches": ["release/*"],
+      "settings": {
+        "workflowDefaultInputs": [
+          { "name": "useGhTokenWorkflow", "value": true }
+        ]
+      }
+    }
+  ]
+}
+```
+
+<Note>
+When multiple conditional settings blocks match and both define `workflowDefaultInputs`, the arrays are merged (all entries are kept). When defaults are applied to workflows, the last matching entry for each input name wins.
+</Note>
+
+## Pattern Matching
+
+All condition arrays support wildcard patterns:
+
+- `*` - Matches zero or more characters
+- `?` - Matches exactly one character
+
+**Examples:**
+- `feature/*` - Matches all branches starting with `feature/`
+- `*-test` - Matches anything ending with `-test`
+- `v?.?` - Matches `v1.0`, `v2.3`, etc.
+- `*` - Matches everything
+
+## Workflow Name Sanitization
+
+When matching workflow names for conditional settings, AL-Go sanitizes the actual workflow name before comparison:
+
+- Leading spaces removed
+- Quotes removed
+- Colons removed
+- Slashes removed
+- Other special characters removed
+
+**Examples:**
+- `" CI/CD"` → `"CICD"`
+- `"Pull Request: Build"` → `"Pull Request Build"`
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep conditions simple">
+    Use the minimum number of conditions needed. Complex multi-condition blocks can be hard to debug.
+  </Accordion>
+  
+  <Accordion title="Document your conditionals">
+    Add comments in your JSON (if supported by your editor) or maintain separate documentation explaining why conditional settings exist.
+  </Accordion>
+  
+  <Accordion title="Test thoroughly">
+    When adding conditional settings, test that they apply correctly by running workflows under the expected conditions.
+  </Accordion>
+  
+  <Accordion title="Use specific patterns">
+    Prefer specific patterns like `feature/new-ui` over broad patterns like `*` to avoid unintended matches.
+  </Accordion>
+  
+  <Accordion title="Order matters">
+    Remember that conditional settings are applied in order. Place more specific conditions after general ones if you want them to override.
+  </Accordion>
+  
+  <Accordion title="Leverage organizational settings">
+    Use organizational conditional settings for policies that should apply across all repositories.
+  </Accordion>
+</AccordionGroup>
+
+## Debugging Conditional Settings
+
+To debug which settings are applied:
+
+1. Check workflow logs for the "Read settings" step
+2. Settings are logged showing the final merged result
+3. Use different settings values to trace which conditionals are applied
+4. Test with specific branches/workflows to verify conditions match
+
+## Related Topics
+
+- [Settings Overview](/settings/overview) - Understand the settings hierarchy
+- [Basic Project Settings](/settings/basic-project) - Settings that can be applied conditionally
+- [Advanced Settings](/settings/advanced) - More settings for conditional application
